@@ -1,0 +1,7 @@
+README.md
+setup.py
+vizdoomgym.egg-info/PKG-INFO
+vizdoomgym.egg-info/SOURCES.txt
+vizdoomgym.egg-info/dependency_links.txt
+vizdoomgym.egg-info/requires.txt
+vizdoomgym.egg-info/top_level.txt
