@@ -1,0 +1,6 @@
+.DS_Store
+*.pyc
+/curiosity/models/output
+/curiosity/src/logs/*.log
+/curiosity/models/saved
+/curiosity/src/_vizdoom*

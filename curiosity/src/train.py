@@ -4,6 +4,11 @@ import sys
 from six.moves import shlex_quote
 from pyvirtualdisplay import Display
 
+# Clean out old log files
+if 'logs' in os.listdir(os.getcwd()):
+    os.system('rm -r logs')
+os.mkdir('logs')
+
 parser = argparse.ArgumentParser(description="Run commands")
 parser.add_argument('-w', '--num-workers', default=20, type=int,
                     help="Number of workers")
@@ -37,11 +42,6 @@ parser.add_argument('--savio', action='store_true',
                     help="Savio or KNL cpu cluster hacks")
 parser.add_argument('--default', action='store_true', help="run with default params")
 parser.add_argument('--pretrain', type=str, default=None, help="Checkpoint dir (generally ..../train/) to load from.")
-
-# Clean out old log files
-if 'logs' in os.listdir(os.getcwd()):
-    os.system('rm -r logs')
-os.mkdir('logs')
 
 def new_cmd(session, name, cmd, mode, logdir, shell):
     if isinstance(cmd, (list, tuple)):
