@@ -15,14 +15,19 @@ use_tf12_api = distutils.version.LooseVersion(tf.VERSION) >= distutils.version.L
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-# Disables write_meta_graph argument, which freezes entire process and is mostly useless.
+# Enables write_meta_graph argument, but original authors claimed this "freezes entire process and is mostly useless"
 class FastSaver(tf.train.Saver):
     def save(self, sess, save_path, global_step=None, latest_filename=None,
              meta_graph_suffix="meta", write_meta_graph=True):
         super(FastSaver, self).save(sess, save_path, global_step, latest_filename,
-                                    meta_graph_suffix, False)
+                                    meta_graph_suffix, write_meta_graph)
 
 def run(args, server):
+
+    # virtual display (headless remotes)
+    virtual_display = Display(visible=0, size=(1400, 900))
+    virtual_display.start()
+
     env = create_env(args.env_id, client_id=str(args.task), remotes=args.remotes, envWrap=args.envWrap, designHead=args.designHead,
                         noLifeReward=args.noLifeReward)
     trainer = A3C(env, args.task, args.visualise, args.unsup, args.envWrap, args.designHead, args.noReward)
