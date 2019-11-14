@@ -4,3 +4,4 @@
 /curiosity/src/logs/*.log
 /curiosity/models/saved
 /curiosity/src/_vizdoom*
+/exp_params_mng-master

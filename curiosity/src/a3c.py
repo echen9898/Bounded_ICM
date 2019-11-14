@@ -160,6 +160,7 @@ def env_runner(env, policy, num_local_steps, summary_writer, render, predictor,
     values = 0
     if predictor is not None:
         ep_bonus = 0
+        bonuses = list() # ADDED
         life_bonus = 0
 
     while True:
@@ -182,6 +183,9 @@ def env_runner(env, policy, num_local_steps, summary_writer, render, predictor,
             curr_tuple = [last_state, action, reward, value_, terminal, last_features]
             if predictor is not None:
                 bonus = predictor.pred_bonus(last_state, state, action)
+                # if bonus > 0.001: bonus = 0.0 # ADDED
+                # else: bonuses.append(bonus) # ADDED
+                bonuses.append(bonus) # ADDED
                 curr_tuple += [bonus, state]
                 life_bonus += bonus
                 ep_bonus += bonus
@@ -224,7 +228,20 @@ def env_runner(env, policy, num_local_steps, summary_writer, render, predictor,
                     values = 0
                     if predictor is not None:
                         summary.value.add(tag='global/episode_bonus', simple_value=float(ep_bonus))
+                        
+                        histogram = tf.HistogramProto() # ADDED
+                        histogram.min = float(np.min(bonuses)) # ADDED
+                        histogram.max = float(np.max(bonuses)) # ADDED
+                        histogram.num = len(bonuses) # ADDED
+                        histogram.sum = float(np.sum(bonuses)) # ADDED
+                        counts, edges = np.histogram(bonuses, bins = 100) # ADDED
+                        for edge in edges[1:]: # ADDED
+                            histogram.bucket_limit.append(edge) # ADDED
+                        for count in counts: # ADDED
+                            histogram.bucket.append(count) # ADDED
+                        summary.value.add(tag='global/stepwise_bonuses', histo=histogram) # ADDED
                         ep_bonus = 0
+                        bonuses = list() # ADDED
                 summary_writer.add_summary(summary, policy.global_step.eval())
                 summary_writer.flush()
 
@@ -414,7 +431,6 @@ class A3C(object):
         sess.run(self.sync)  # copy weights from shared to local
         rollout = self.pull_batch_from_queue()
         batch = process_rollout(rollout, gamma=constants['GAMMA'], lambda_=constants['LAMBDA'], clip=self.envWrap)
-
         should_compute_summary = self.task == 0 and self.local_steps % 11 == 0
 
         if should_compute_summary:
