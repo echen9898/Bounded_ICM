@@ -10,8 +10,8 @@ import bson
 import yaml
 
 ##3rd party
-from pyhelper_fns import path_utils
-from pyhelper_fns.config_utils import ConfigHelper
+from utilities import path_utils
+from utilities.config_utils import ConfigHelper
 
 
 class CustomError(Exception):

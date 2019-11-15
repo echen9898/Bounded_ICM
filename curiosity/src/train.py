@@ -74,18 +74,18 @@ def create_commands(session, num_workers, remotes, env_id, logdir, shell='bash',
         base_cmd += ['--visualise']
     if envWrap:
         base_cmd += ['--envWrap']
-    if designHead is not None:
+    if designHead not in [None, 'None']:
         base_cmd += ['--designHead', designHead]
-    if unsup is not None:
+    if unsup not in [None, 'None']:
         base_cmd += ['--unsup', unsup]
     if noReward:
         base_cmd += ['--noReward']
     if noLifeReward:
         base_cmd += ['--noLifeReward']
-    if pretrain is not None:
+    if pretrain not in [None, 'None']:
         base_cmd += ['--pretrain', pretrain]
-
-    if remotes is None:
+    print(type(remotes), remotes)
+    if remotes in [None, 'None']:
         remotes = ["1"] * num_workers
     else:
         remotes = remotes.split(',')
@@ -98,7 +98,7 @@ def create_commands(session, num_workers, remotes, env_id, logdir, shell='bash',
 
     # No tensorboard or htop window if running multiple experiments per machine
     if session == 'a3c':
-        cmds_map += [new_cmd(session, "tb", ["tensorboard", "--logdir", logdir, "--port", "12345"], mode, logdir, shell)]
+        cmds_map += [new_cmd(session, "tb", ["tensorboard", "--logdir", logdir, "--port", "12346"], mode, logdir, shell)]
     if session == 'a3c' and mode == 'tmux':
         cmds_map += [new_cmd(session, "htop", ["htop"], mode, logdir, shell)]
 
@@ -117,11 +117,11 @@ def create_commands(session, num_workers, remotes, env_id, logdir, shell='bash',
         notes += ["Use `tmux kill-session -t {}` to kill the job".format(session)]
     else:
         notes += ["Use `tail -f {}/*.out` to watch process output".format(logdir)]
-    notes += ["Point your browser to http://localhost:12345 to see Tensorboard"]
+    notes += ["Point your browser to http://localhost:12346 to see Tensorboard"]
 
     if mode == 'tmux':
         cmds += [
-        "kill -9 $( lsof -i:12345 -t ) > /dev/null 2>&1",  # kill any process using tensorboard's port
+        "kill -9 $( lsof -i:12346 -t ) > /dev/null 2>&1",  # kill any process using tensorboard's port
         "kill -9 $( lsof -i:{}-{} -t ) > /dev/null 2>&1".format(psPort, num_workers+psPort), # kill any processes using ps / worker ports
         "tmux kill-session -t {}".format(session),
         "tmux new-session -s {} -n {} -d {}".format(session, windows[0], shell)

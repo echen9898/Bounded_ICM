@@ -10,6 +10,7 @@ from a3c import A3C
 from envs import create_env
 from constants import constants
 import distutils.version
+from pyvirtualdisplay import Display
 use_tf12_api = distutils.version.LooseVersion(tf.VERSION) >= distutils.version.LooseVersion('0.12.0')
 
 logger = logging.getLogger(__name__)

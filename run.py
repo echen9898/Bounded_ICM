@@ -58,7 +58,8 @@ parser.add_argument('-default', action='store_true', help="run with default para
 parser.add_argument('-pretrain', type=str, default=None, help="Checkpoint dir (generally ..../train/) to load from.")
 
 training_args = {'num_workers', 'remotes', 'env_id', 'log_dir', 'dry_run', 'mode', 'visualise', 'envWrap',
-    'designHead', 'unsup', 'noReward', 'noLifeReward', 'expName', 'expId', 'savio', 'default', 'pretrain'}
+    'designHead', 'unsup', 'noReward', 'noLifeReward', 'expName', 'expId', 'savio', 'default', 'pretrain'} # all training related args in train.py
+store_true = {'dry_run', 'visualise', 'envWrap', 'noReward', 'noLifeReward', 'savio', 'default'} # args defined with 'store_true' in train.py
 
 # Training Parameters
 class ParameterObject(params_object.ParamsObject):
@@ -83,17 +84,17 @@ class TrainingParams(ParameterObject):
         dParams['remotes'] = None
         dParams['env_id'] = 'doom'
         dParams['log_dir'] = 'tmp/model'
-        dParams['dry_run'] = False
+        dParams['dry_run'] = False # only flag should be passed in as a command
         dParams['mode'] = 'tmux'
         dParams['visualise'] = False
         dParams['envWrap'] = True
         dParams['designHead'] = 'universe'
-        dParams['unsup'] = 'action'
+        dParams['unsup'] = None
         dParams['noReward'] = False
         dParams['noLifeReward'] = True
         dParams['expName'] = 'a3c'
         dParams['expId'] = 0
-        dParams['savio'] = True
+        dParams['savio'] = False
         dParams['default'] = False
         dParams['pretrain'] = None
         return dParams
@@ -121,7 +122,15 @@ def dict_to_command(args):
     ''' Convert a dictionary to a python argument format.
     '''
     cmd = ''
-    for k in args: cmd += '--{} {} '.format(k.replace('_', '-'), args[k])
+    for k in args:
+        val = args[k]
+        arg = k
+        if arg not in training_args:
+            continue
+        if arg in store_true:
+            if val == True: cmd += '--{} '.format(arg.replace('_', '-'))
+            continue
+        cmd += '--{} {} '.format(arg.replace('_', '-'), val)
     return cmd
 
 def replace_in_file(filename, key, new_value):
@@ -194,6 +203,7 @@ def generate_commands(args):
                     doc = train.find_by_id(exp.default_params()['params_hash'])
                     params = dict_to_command(doc.next())
                     params = params.replace('_', '-') # remember to replace '_' with '-'
+                    print(params)
 
                     # create training command (directory changes before this is run)
                     commands.append('{} train.py {}'.format(py_cmd, params))
@@ -231,6 +241,9 @@ def generate_commands(args):
                     replace_in_file('experiment_log.txt', algo, trial_number) # increment count
                     registry.write(log_entry)
                     print('Experiment registered')
+                    
+                    # wait for tmp file to be created
+                    commands.append('sleep 10')
 
                     # create a usertag.txt file in tmp with the correct usertag and datetime
                     with open('./curiosity/src/usertag.txt', 'w+') as file: file.write('{}'.format(usertag))
@@ -281,11 +294,10 @@ def run():
 
     if len(commands) == 0: return
 
-    if args.dry_run_highlvl: # print commands without running them
-        print('Generated commands: ')
-        print('-'*50)
-        print(commands)
-    else: 
+    print('Generated commands: ')
+    print('-'*50)
+    print(commands)
+    if not args.dry_run_highlvl: # run commands
         if args.op != 'swap': os.chdir('./curiosity/src')
         os.system(commands)
 
