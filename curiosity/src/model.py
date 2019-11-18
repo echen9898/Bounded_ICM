@@ -208,11 +208,13 @@ class LSTMPolicy(object):
         self.probs = tf.nn.softmax(self.logits, dim=-1)[0, :]
 
         self.var_list = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, tf.get_variable_scope().name)
-        # tf.add_to_collection('probs', self.probs)
-        # tf.add_to_collection('sample', self.sample)
-        # tf.add_to_collection('state_out_0', self.state_out[0])
-        # tf.add_to_collection('state_out_1', self.state_out[1])
-        # tf.add_to_collection('vf', self.vf)
+
+        # Demo related collections (used for inference once model is trained)
+        tf.add_to_collection('probs', self.probs)
+        tf.add_to_collection('sample', self.sample)
+        tf.add_to_collection('state_out_0', self.state_out[0])
+        tf.add_to_collection('state_out_1', self.state_out[1])
+        tf.add_to_collection('vf', self.vf)
 
     def get_initial_features(self):
         # Call this function to get reseted lstm memory cells

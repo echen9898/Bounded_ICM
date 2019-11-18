@@ -12,7 +12,7 @@ services:
       - MONGO_INITDB_ROOT_USERNAME=default
       - MONGO_INITDB_ROOT_PASSWORD=default
     volumes:
-      - ./exp_params_mng/container_init:/docker-entrypoint-initdb.d
+      - ./params_manager/container_init:/docker-entrypoint-initdb.d
       - ./curiosity/params:/data/db
   trainer:
     build: .

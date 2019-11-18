@@ -144,7 +144,7 @@ Setting up Tensorflow for data parallel work
     parser.add_argument('--task', default=0, type=int, help='Task index')
     parser.add_argument('--job-name', default="worker", help='worker or ps')
     parser.add_argument('--num-workers', default=1, type=int, help='Number of workers')
-    parser.add_argument('--log-dir', default="tmp/doom", help='Log directory path')
+    parser.add_argument('--log-dir', default="tmp/model", help='Log directory path')
     parser.add_argument('--env-id', default="doom", help='Environment id')
     parser.add_argument('-r', '--remotes', default=None,
                         help='References to environments to create (e.g. -r 20), '

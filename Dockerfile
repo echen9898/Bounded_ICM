@@ -40,7 +40,7 @@ RUN apt-get update && apt-get install -y \
     xorg-dev
 
 # Python Dependencies
-RUN pip install numpy vizdoom go_vncdriver pytz
+RUN pip install numpy vizdoom go_vncdriver
 COPY ./curiosity/requirements.txt /requirements.txt
 RUN pip install -r ./requirements.txt
 COPY ./vizdoomgym /vizdoomgym

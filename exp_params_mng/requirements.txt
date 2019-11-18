@@ -1,5 +1,0 @@
-numpy
-pymongo
-pyyaml
-ipython
-docopt

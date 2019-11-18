@@ -27,9 +27,10 @@ def inference(args):
         config = tf.ConfigProto(allow_soft_placement=True, log_device_placement=False)
         with tf.Session(config=config) as sess:
             logger.info("Restoring trainable global parameters.")
-            saver = tf.train.import_meta_graph(args.ckpt+'.meta')
+            saver = tf.train.import_meta_graph(args.ckpt+'.meta', clear_devices=True) # ADDED CLEAR DEVICES
             saver.restore(sess, args.ckpt)
 
+            # Collections are saved in model.py under LSTM policy
             probs = tf.get_collection("probs")[0]
             sample = tf.get_collection("sample")[0]
             vf = tf.get_collection("vf")[0]

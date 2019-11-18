@@ -84,7 +84,6 @@ def create_commands(session, num_workers, remotes, env_id, logdir, shell='bash',
         base_cmd += ['--noLifeReward']
     if pretrain not in [None, 'None']:
         base_cmd += ['--pretrain', pretrain]
-    print(type(remotes), remotes)
     if remotes in [None, 'None']:
         remotes = ["1"] * num_workers
     else:
@@ -158,13 +157,13 @@ def run():
         print("Dry-run mode due to -n flag, otherwise the following commands would be executed:")
     else:
         print("Executing the following commands:")
-    print("\n".join(cmds))
-    print("")
+    #print("\n".join(cmds))
+    #print("")
     if not args.dry_run:
         if args.mode == "tmux":
             os.environ["TMUX"] = ""
         os.system("\n".join(cmds))
-    print('\n'.join(notes))
+    #print('\n'.join(notes))
 
 
 if __name__ == "__main__":
