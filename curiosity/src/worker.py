@@ -29,9 +29,10 @@ def run(args, server):
     virtual_display = Display(visible=0, size=(1400, 900))
     virtual_display.start()
 
+    if args.task != 0: args.visualise == False # only record one worker
     env = create_env(args.env_id, client_id=str(args.task), remotes=args.remotes, envWrap=args.envWrap, designHead=args.designHead,
-                        noLifeReward=args.noLifeReward)
-    trainer = A3C(env, args.task, args.visualise, args.unsup, args.envWrap, args.designHead, args.noReward)
+                        noLifeReward=args.noLifeReward, record=args.visualise, record_frequency=args.record_frequency, outdir=args.record_dir)
+    trainer = A3C(env, args.task, args.visualise, args.unsup, args.envWrap, args.designHead, args.noReward, args.bonus_bound)
 
     # logging
     if args.task == 0:
@@ -146,24 +147,19 @@ Setting up Tensorflow for data parallel work
     parser.add_argument('--num-workers', default=1, type=int, help='Number of workers')
     parser.add_argument('--log-dir', default="tmp/model", help='Log directory path')
     parser.add_argument('--env-id', default="doom", help='Environment id')
-    parser.add_argument('-r', '--remotes', default=None,
-                        help='References to environments to create (e.g. -r 20), '
-                             'or the address of pre-existing VNC servers and '
-                             'rewarders to use (e.g. -r vnc://localhost:5900+15900,vnc://localhost:5901+15901)')
-    parser.add_argument('--visualise', action='store_true',
-                        help="Visualise the gym environment by running env.render() between each timestep")
-    parser.add_argument('--envWrap', action='store_true',
-                        help="Preprocess input in env_wrapper (no change in input size or network)")
-    parser.add_argument('--designHead', type=str, default='universe',
-                        help="Network deign head: nips or nature or doom or universe(default)")
-    parser.add_argument('--unsup', type=str, default=None,
-                        help="Unsup. exploration mode: action or state or stateAenc or None")
+    parser.add_argument('-r', '--remotes', default=None, help='References to environments to create (e.g. -r 20), or the address of pre-existing VNC servers and rewarders to use (e.g. -r vnc://localhost:5900+15900,vnc://localhost:5901+15901)')
+    parser.add_argument('--visualise', type=bool, default=True, help="Visualise the gym environment by running env.render() between each timestep")
+    parser.add_argument('--envWrap', action='store_true', help="Preprocess input in env_wrapper (no change in input size or network)")
+    parser.add_argument('--designHead', type=str, default='universe', help="Network deign head: nips or nature or doom or universe(default)")
+    parser.add_argument('--unsup', type=str, default=None, help="Unsup. exploration mode: action or state or stateAenc or None")
     parser.add_argument('--noReward', action='store_true', help="Remove all extrinsic reward")
-    parser.add_argument('--noLifeReward', action='store_true',
-                        help="Remove all negative reward (in doom: it is living reward)")
+    parser.add_argument('--noLifeReward', action='store_true', help="Remove all negative reward (in doom: it is living reward)")
     parser.add_argument('--psPort', default=12222, type=int, help='Port number for parameter server')
     parser.add_argument('--delay', default=0, type=int, help='delay start by these many seconds')
     parser.add_argument('--pretrain', type=str, default=None, help="Checkpoint dir (generally ..../train/) to load from.")
+    parser.add_argument('--record-frequency', type=int, default=100, help="Interval (in episodes) between saved videos")
+    parser.add_argument('--record-dir', type=str, default='tmp/model/videos', help="Path to directory where training videos should be saved")
+    parser.add_argument('--bonus-bound', type=float, default=None, help="Intrinsic reward bound. If reward is above this, it's set to 0")
     args = parser.parse_args()
 
     spec = cluster_spec(args.num_workers, 1, args.psPort)

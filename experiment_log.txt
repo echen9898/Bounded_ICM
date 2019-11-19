@@ -1,4 +1,10 @@
+none_dense = 0
+none_sparse = 0
+none_verySparse = 0
 icm_dense = 0
 icm_sparse = 0
 icm_verySparse = 0
+icmpix_dense = 0
+icmpix_sparse = 0
+icmpix_verySparse = 0
 

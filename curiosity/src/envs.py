@@ -34,7 +34,7 @@ def create_env(env_id, client_id, remotes, **kwargs):
         return create_atari_env(env_id, **kwargs)
 
 def create_doom(env_id, client_id, envWrap=True, record=False, outdir=None,
-                    noLifeReward=False, acRepeat=0, **_):
+                    noLifeReward=False, acRepeat=0, record_frequency=None, **_):
     import vizdoomgym
 
     if 'very' in env_id.lower():
@@ -64,7 +64,10 @@ def create_doom(env_id, client_id, envWrap=True, record=False, outdir=None,
     # env = env_wrapper.MakeEnvDynamic(env)  # to add stochasticity
     
     if record and outdir is not None:
-        env = wrappers.Monitor(env, outdir, force=True)
+        if record_frequency:
+            env = wrappers.Monitor(env, outdir, video_callable=lambda episode: episode%record_frequency==0, force=True)
+        else:
+            env = wrappers.Monitor(env, outdir, force=True)
 
     if envWrap:
         fshape = (42, 42)

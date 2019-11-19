@@ -10,38 +10,26 @@ if 'logs' in os.listdir(os.getcwd()):
 os.mkdir('logs')
 
 parser = argparse.ArgumentParser(description="Run commands")
-parser.add_argument('-w', '--num-workers', default=20, type=int,
-                    help="Number of workers")
-parser.add_argument('-r', '--remotes', default=None,
-                    help='The address of pre-existing VNC servers and '
-                         'rewarders to use (e.g. -r vnc://localhost:5900+15900,vnc://localhost:5901+15901).')
-parser.add_argument('-e', '--env-id', type=str, default="doom",
-                    help="Environment id")
-parser.add_argument('-l', '--log-dir', type=str, default="tmp/model",
-                    help="Log directory path")
-parser.add_argument('-n', '--dry-run', action='store_true',
-                    help="Print out commands rather than executing them")
-parser.add_argument('-m', '--mode', type=str, default='tmux',
-                    help="tmux: run workers in a tmux session. nohup: run workers with nohup. child: run workers as child processes")
-parser.add_argument('--visualise', action='store_true',
-                    help="Visualise the gym environment by running env.render() between each timestep")
-parser.add_argument('--envWrap', action='store_true',
-                    help="Preprocess input in env_wrapper (no change in input size or network)")
-parser.add_argument('--designHead', type=str, default='universe',
-                    help="Network deign head: nips or nature or doom or universe(default)")
-parser.add_argument('--unsup', type=str, default=None,
-                    help="Unsup. exploration mode: action or state or stateAenc or None")
+parser.add_argument('-w', '--num-workers', default=20, type=int, help="Number of workers")
+parser.add_argument('-r', '--remotes', default=None, help='The address of pre-existing VNC servers and rewarders to use (e.g. -r vnc://localhost:5900+15900,vnc://localhost:5901+15901).')
+parser.add_argument('-e', '--env-id', type=str, default="doom", help="Environment id")
+parser.add_argument('-l', '--log-dir', type=str, default="tmp/model", help="Log directory path")
+parser.add_argument('-n', '--dry-run', action='store_true', help="Print out commands rather than executing them")
+parser.add_argument('-m', '--mode', type=str, default='tmux', help="tmux: run workers in a tmux session. nohup: run workers with nohup. child: run workers as child processes")
+parser.add_argument('--visualise', type=bool, default=True, help="Visualise the gym environment by running env.render() between each timestep")
+parser.add_argument('--envWrap', action='store_true', help="Preprocess input in env_wrapper (no change in input size or network)")
+parser.add_argument('--designHead', type=str, default='universe', help="Network deign head: nips or nature or doom or universe(default)")
+parser.add_argument('--unsup', type=str, default=None, help="Unsup. exploration mode: action or state or stateAenc or None")
 parser.add_argument('--noReward', action='store_true', help="Remove all extrinsic reward")
-parser.add_argument('--noLifeReward', action='store_true',
-                    help="Remove all negative reward (in doom: it is living reward)")
-parser.add_argument('--expName', type=str, default='a3c',
-                    help="Experiment tmux session-name. Default a3c.")
-parser.add_argument('--expId', type=int, default=0,
-                    help="Experiment Id >=0. Needed while runnig more than one run per machine.")
-parser.add_argument('--savio', action='store_true',
-                    help="Savio or KNL cpu cluster hacks")
+parser.add_argument('--noLifeReward', action='store_true', help="Remove all negative reward (in doom: it is living reward)")
+parser.add_argument('--expName', type=str, default='a3c', help="Experiment tmux session-name. Default a3c.")
+parser.add_argument('--expId', type=int, default=0, help="Experiment Id >=0. Needed while runnig more than one run per machine.")
+parser.add_argument('--savio', action='store_true', help="Savio or KNL cpu cluster hacks")
 parser.add_argument('--default', action='store_true', help="run with default params")
 parser.add_argument('--pretrain', type=str, default=None, help="Checkpoint dir (generally ..../train/) to load from.")
+parser.add_argument('--record-frequency', type=int, default=100, help="Interval (in episodes) between saved videos")
+parser.add_argument('--record-dir', type=str, default='tmp/model/videos', help="Path to directory where training videos should be saved")
+parser.add_argument('--bonus-bound', type=float, default=None, help="Intrinsic reward bound. If reward is above this, it's set to 0")
 
 def new_cmd(session, name, cmd, mode, logdir, shell):
     if isinstance(cmd, (list, tuple)):
@@ -56,8 +44,8 @@ def new_cmd(session, name, cmd, mode, logdir, shell):
 
 def create_commands(session, num_workers, remotes, env_id, logdir, shell='bash',
                     mode='tmux', visualise=False, envWrap=False, designHead=None,
-                    unsup=None, noReward=False, noLifeReward=False, psPort=12222,
-                    delay=0, savio=False, pretrain=None):
+                    unsup=None, noReward=False, noLifeReward=False, bonus_bound=None, psPort=12222,
+                    delay=0, savio=False, pretrain=None, record_frequency=None, record_dir='tmp/model/videos'):
     # for launching the TF workers and for launching tensorboard
     py_cmd = 'python' if savio else sys.executable
     base_cmd = [
@@ -70,8 +58,10 @@ def create_commands(session, num_workers, remotes, env_id, logdir, shell='bash',
 
     if delay > 0:
         base_cmd += ['--delay', delay]
-    if visualise:
-        base_cmd += ['--visualise']
+    if visualise and record_dir and record_frequency:
+        base_cmd += ['--visualise', visualise]
+        base_cmd += ['--record-frequency', record_frequency]
+        base_cmd += ['--record-dir', record_dir]
     if envWrap:
         base_cmd += ['--envWrap']
     if designHead not in [None, 'None']:
@@ -82,6 +72,9 @@ def create_commands(session, num_workers, remotes, env_id, logdir, shell='bash',
         base_cmd += ['--noReward']
     if noLifeReward:
         base_cmd += ['--noLifeReward']
+    if bonus_bound:
+        base_cmd += ['--bonus-bound', bonus_bound]
+        print('Layer 1', bonus_bound)
     if pretrain not in [None, 'None']:
         base_cmd += ['--pretrain', pretrain]
     if remotes in [None, 'None']:
@@ -152,18 +145,20 @@ def run():
                                     envWrap=args.envWrap, designHead=args.designHead,
                                     unsup=args.unsup, noReward=args.noReward,
                                     noLifeReward=args.noLifeReward, psPort=psPort,
-                                    delay=delay, savio=args.savio, pretrain=args.pretrain)
+                                    delay=delay, savio=args.savio, pretrain=args.pretrain,
+                                    record_frequency=args.record_frequency, record_dir=args.record_dir,
+                                    bonus_bound=args.bonus_bound)
     if args.dry_run:
         print("Dry-run mode due to -n flag, otherwise the following commands would be executed:")
     else:
         print("Executing the following commands:")
-    #print("\n".join(cmds))
-    #print("")
+    print("\n".join(cmds))
+    print("")
     if not args.dry_run:
         if args.mode == "tmux":
             os.environ["TMUX"] = ""
         os.system("\n".join(cmds))
-    #print('\n'.join(notes))
+    print('\n'.join(notes))
 
 
 if __name__ == "__main__":

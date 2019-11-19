@@ -100,13 +100,10 @@ def main(_):
     parser.add_argument('--outdir', default="../models/output", help='Output log directory')
     parser.add_argument('--env-id', default="doom", help='Environment id')
     parser.add_argument('--record', action='store_true', help="Record the policy running video")
-    parser.add_argument('--render', action='store_true',
-                        help="Render the gym environment video online")
+    parser.add_argument('--render', action='store_true', help="Render the gym environment video online")
     parser.add_argument('--num-episodes', type=int, default=2, help="Number of episodes to run")
-    parser.add_argument('--greedy', action='store_true',
-                        help="Default sampled policy. This option does argmax.")
-    parser.add_argument('--random', action='store_true',
-                        help="Default sampled policy. This option does random policy.")
+    parser.add_argument('--greedy', action='store_true', help="Default sampled policy. This option does argmax.")
+    parser.add_argument('--random', action='store_true', help="Default sampled policy. This option does random policy.")
     args = parser.parse_args()
     inference(args)
 

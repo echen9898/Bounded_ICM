@@ -110,7 +110,7 @@ class RunnerThread(threading.Thread):
     that would constantly interact with the environment and tell it what to do.  This thread is here.
     """
     def __init__(self, env, policy, num_local_steps, visualise, predictor, envWrap,
-                    noReward):
+                    noReward, bonus_bound):
         threading.Thread.__init__(self)
         self.queue = queue.Queue(5)  # ideally, should be 1. Mostly doesn't matter in our case.
         self.num_local_steps = num_local_steps
@@ -124,6 +124,7 @@ class RunnerThread(threading.Thread):
         self.predictor = predictor
         self.envWrap = envWrap
         self.noReward = noReward
+        self.bonus_bound = bonus_bound
 
     def start_runner(self, sess, summary_writer):
         self.sess = sess
@@ -137,7 +138,7 @@ class RunnerThread(threading.Thread):
     def _run(self):
         rollout_provider = env_runner(self.env, self.policy, self.num_local_steps,
                                         self.summary_writer, self.visualise, self.predictor,
-                                        self.envWrap, self.noReward)
+                                        self.envWrap, self.noReward, self.bonus_bound)
         while True:
             # the timeout variable exists because apparently, if one worker dies, the other workers
             # won't die with it, unless the timeout is set to some large number.  This is an empirical
@@ -147,7 +148,7 @@ class RunnerThread(threading.Thread):
 
 
 def env_runner(env, policy, num_local_steps, summary_writer, render, predictor,
-                envWrap, noReward):
+                envWrap, noReward, bonus_bound):
     """
     The logic of the thread runner.  In brief, it constantly keeps on running
     the policy, and as long as the rollout exceeds a certain length, the thread
@@ -183,9 +184,11 @@ def env_runner(env, policy, num_local_steps, summary_writer, render, predictor,
             curr_tuple = [last_state, action, reward, value_, terminal, last_features]
             if predictor is not None:
                 bonus = predictor.pred_bonus(last_state, state, action)
-                # if bonus > 0.001: bonus = 0.0 # ADDED
-                # else: bonuses.append(bonus) # ADDED
-                bonuses.append(bonus) # ADDED
+
+                if bonus_bound != None and bonus > bonus_bound:
+                    bonus = 0.0 # intrinsic reward bounding -------------------------------------------------------------------------------------------------------------
+
+                bonuses.append(bonus)
                 curr_tuple += [bonus, state]
                 life_bonus += bonus
                 ep_bonus += bonus
@@ -229,19 +232,20 @@ def env_runner(env, policy, num_local_steps, summary_writer, render, predictor,
                     if predictor is not None:
                         summary.value.add(tag='global/episode_bonus', simple_value=float(ep_bonus))
                         
-                        histogram = tf.HistogramProto() # ADDED
-                        histogram.min = float(np.min(bonuses)) # ADDED
-                        histogram.max = float(np.max(bonuses)) # ADDED
-                        histogram.num = len(bonuses) # ADDED
-                        histogram.sum = float(np.sum(bonuses)) # ADDED
-                        counts, edges = np.histogram(bonuses, bins = 100) # ADDED
-                        for edge in edges[1:]: # ADDED
-                            histogram.bucket_limit.append(edge) # ADDED
-                        for count in counts: # ADDED
-                            histogram.bucket.append(count) # ADDED
-                        summary.value.add(tag='global/stepwise_bonuses', histo=histogram) # ADDED
+                        histogram = tf.HistogramProto() 
+                        histogram.min = float(np.min(bonuses)) 
+                        histogram.max = float(np.max(bonuses))
+                        histogram.num = len(bonuses) 
+                        histogram.sum = float(np.sum(bonuses)) 
+                        counts, edges = np.histogram(bonuses, bins = 100)
+                        for edge in edges[1:]: 
+                            histogram.bucket_limit.append(edge) 
+                        for count in counts:
+                            histogram.bucket.append(count) 
+                        summary.value.add(tag='global/stepwise_bonuses', histo=histogram)
                         ep_bonus = 0
                         bonuses = list() # ADDED
+
                 summary_writer.add_summary(summary, policy.global_step.eval())
                 summary_writer.flush()
 
@@ -256,7 +260,7 @@ def env_runner(env, policy, num_local_steps, summary_writer, render, predictor,
 
 
 class A3C(object):
-    def __init__(self, env, task, visualise, unsupType, envWrap=False, designHead='universe', noReward=False):
+    def __init__(self, env, task, visualise, unsupType, envWrap=False, designHead='universe', noReward=False, bonus_bound=None):
         """
         An implementation of the A3C algorithm that is reasonably well-tuned for the VNC environments.
         Below, we will have a modest amount of complexity due to the way TensorFlow handles data parallelism.
@@ -331,7 +335,7 @@ class A3C(object):
 
 
             self.runner = RunnerThread(env, pi, constants['ROLLOUT_MAXLEN'], visualise,
-                                        predictor, envWrap, noReward)
+                                        predictor, envWrap, noReward, bonus_bound)
 
             # storing summaries
             bs = tf.to_float(tf.shape(pi.x)[0])

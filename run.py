@@ -12,13 +12,13 @@ from params_manager import params_object
 
 # default arguments for training operations
 TRAINING_PARAMS = {
-    'num_workers': 2,
+    'num_workers': 20,
     'remotes':None,
     'env_id':'doom',
     'log_dir':'tmp/model',
     'dry_run':False,
     'mode':'tmux',
-    'visualise':False,
+    'visualise':True,
     'envWrap':True,
     'designHead':'universe',
     'unsup':None,
@@ -29,10 +29,13 @@ TRAINING_PARAMS = {
     'savio':False,
     'default':False,
     'pretrain':None,
+    'record_frequency':100, # in episodes
+    'record_dir':'tmp/model/videos',
+    'bonus_bound':None
 }
 
 # arguments with 'action = store_true' in train.py
-STORE_TRUE_TRAIN = {'dry_run', 'visualise', 'envWrap', 'noReward', 'noLifeReward', 'savio', 'default'}
+STORE_TRUE_TRAIN = {'dry_run', 'envWrap', 'noReward', 'noLifeReward', 'savio', 'default'}
 
 # default arguments for demonstration operations
 DEMO_PARAMS = {
@@ -51,9 +54,15 @@ STORE_TRUE_DEMO = {'record', 'render', 'greedy', 'random'}
 
 # line indexes for the registry file
 REGISTRY = { 
-    'icm_dense':0, 
-    'icm_sparse':1, 
-    'icm_verySparse':2
+    'none_dense':0, 
+    'none_sparse':1,
+    'none_verySparse':2,
+    'icm_dense':3,
+    'icm_sparse':4, 
+    'icm_verySparse':5,
+    'icmpix_dense':6,
+    'icmpix_sparse':7,
+    'icmpix_verySparse':8
 }
 
 
@@ -72,7 +81,7 @@ parser.add_argument('-env-id', type=str, default="doom", help="Environment id")
 parser.add_argument('-log-dir', type=str, default="tmp/model", help="Log directory path")
 parser.add_argument('-dry-run', type=bool, default=False, help="Print out commands rather than executing them")
 parser.add_argument('-mode', type=str, default='tmux', help="tmux: run workers in a tmux session. nohup: run workers with nohup. child: run workers as child processes")
-parser.add_argument('-visualise', type=bool, default=False, help="Visualise the gym environment by running env.render() between each timestep")
+parser.add_argument('-visualise', type=bool, default=True, help="Visualise the gym environment by running env.render() between each timestep")
 parser.add_argument('-envWrap', type=bool, default=True, help="Preprocess input in env_wrapper (no change in input size or network)")
 parser.add_argument('-designHead', type=str, default='universe', help="Network deign head: nips or nature or doom or universe(default)")
 parser.add_argument('-unsup', type=str, default=None, help="Unsup. exploration mode: action or state or stateAenc or None")
@@ -83,6 +92,9 @@ parser.add_argument('-expId', type=int, default=0, help="Experiment Id >=0. Need
 parser.add_argument('-savio', type=bool, default=False, help="Savio or KNL cpu cluster hacks")
 parser.add_argument('-default', type=bool, default=False, help="run with default params")
 parser.add_argument('-pretrain', type=str, default=None, help="Checkpoint dir (generally ..../train/) to load from")
+parser.add_argument('-record-frequency', type=int, default=100, help="Interval (in episodes) between saved videos")
+parser.add_argument('-record-dir', type=str, default='tmp/model/videos', help="Path to directory where training videos should be saved")
+parser.add_argument('-bonus-bound', type=float, default=None, help="Intrinsic reward bound. If reward is above this, it's set to 0")
 
 # DEMO OP ARGUMENTS
 parser.add_argument('--ckpt', default="../models/doom/doom_ICM", help='checkpoint name')
@@ -144,12 +156,20 @@ def create_usertag(args):
     ''' Create a usertag of the following format: alg_setting_# (e.g. icm_dense_3) '''
     with open(args.registry, 'r') as registry:
         registry_text = registry.readlines()
+
+        # Algorithm choice (none, icm, icmpix)
+        if args.unsup == None: algo = 'none'
+        elif args.unsup == 'action': algo = 'icm'
+        elif 'state' in args.unsup.lower(): algo = 'icmpix'
+
+        # Reward setting (dense, sparse, verySparse)
         if 'very' in args.env_id.lower(): setting='verySparse'
         elif 'sparse' in args.env_id.lower(): setting='sparse'
         else: setting='dense'
-        algo = 'icm_{}'.format(setting) 
-        trial_number = str(int(registry_text[REGISTRY[algo]].strip()[-1])+1) 
-        usertag = '{}_{}'.format(algo, trial_number)
+
+        combo = '{}_{}'.format(algo, setting) 
+        trial_number = str(int(registry_text[REGISTRY[combo]].strip()[-1])+1) 
+        usertag = '{}_{}'.format(combo, trial_number)
         return usertag
 
 def dict_to_command(args, mode):
