@@ -185,7 +185,7 @@ def env_runner(env, policy, num_local_steps, summary_writer, render, predictor,
             if predictor is not None:
                 bonus = predictor.pred_bonus(last_state, state, action)
 
-                if bonus_bound != None and bonus > bonus_bound:
+                if bonus_bound > 0 and bonus > bonus_bound:
                     bonus = 0.0 # intrinsic reward bounding -------------------------------------------------------------------------------------------------------------
 
                 bonuses.append(bonus)

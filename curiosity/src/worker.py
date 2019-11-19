@@ -159,7 +159,7 @@ Setting up Tensorflow for data parallel work
     parser.add_argument('--pretrain', type=str, default=None, help="Checkpoint dir (generally ..../train/) to load from.")
     parser.add_argument('--record-frequency', type=int, default=100, help="Interval (in episodes) between saved videos")
     parser.add_argument('--record-dir', type=str, default='tmp/model/videos', help="Path to directory where training videos should be saved")
-    parser.add_argument('--bonus-bound', type=float, default=None, help="Intrinsic reward bound. If reward is above this, it's set to 0")
+    parser.add_argument('--bonus-bound', type=float, default=-1.0, help="Intrinsic reward bound. If reward is above this, it's set to 0")
     args = parser.parse_args()
 
     spec = cluster_spec(args.num_workers, 1, args.psPort)

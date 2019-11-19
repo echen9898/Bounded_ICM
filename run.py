@@ -31,7 +31,7 @@ TRAINING_PARAMS = {
     'pretrain':None,
     'record_frequency':100, # in episodes
     'record_dir':'tmp/model/videos',
-    'bonus_bound':None
+    'bonus_bound':-1.0
 }
 
 # arguments with 'action = store_true' in train.py
@@ -94,7 +94,7 @@ parser.add_argument('-default', type=bool, default=False, help="run with default
 parser.add_argument('-pretrain', type=str, default=None, help="Checkpoint dir (generally ..../train/) to load from")
 parser.add_argument('-record-frequency', type=int, default=100, help="Interval (in episodes) between saved videos")
 parser.add_argument('-record-dir', type=str, default='tmp/model/videos', help="Path to directory where training videos should be saved")
-parser.add_argument('-bonus-bound', type=float, default=None, help="Intrinsic reward bound. If reward is above this, it's set to 0")
+parser.add_argument('-bonus-bound', type=float, default=-1.0, help="Intrinsic reward bound. If reward is above this, it's set to 0")
 
 # DEMO OP ARGUMENTS
 parser.add_argument('--ckpt', default="../models/doom/doom_ICM", help='checkpoint name')
