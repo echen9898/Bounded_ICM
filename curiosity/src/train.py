@@ -27,7 +27,7 @@ parser.add_argument('--expId', type=int, default=0, help="Experiment Id >=0. Nee
 parser.add_argument('--savio', action='store_true', help="Savio or KNL cpu cluster hacks")
 parser.add_argument('--default', action='store_true', help="run with default params")
 parser.add_argument('--pretrain', type=str, default=None, help="Checkpoint dir (generally ..../train/) to load from.")
-parser.add_argument('--record-frequency', type=int, default=100, help="Interval (in episodes) between saved videos")
+parser.add_argument('--record-frequency', type=int, default=300, help="Interval (in episodes) between saved videos")
 parser.add_argument('--record-dir', type=str, default='tmp/model/videos', help="Path to directory where training videos should be saved")
 parser.add_argument('--bonus-bound', type=float, default=-1.0, help="Intrinsic reward bound. If reward is above this, it's set to 0")
 

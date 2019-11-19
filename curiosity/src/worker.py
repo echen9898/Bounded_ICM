@@ -29,9 +29,12 @@ def run(args, server):
     virtual_display = Display(visible=0, size=(1400, 900))
     virtual_display.start()
 
-    if args.task != 0: args.visualise == False # only record one worker
+    if args.task != 0: 
+        visualise = False # only record one worker
+    else:
+        visualise = args.visualise
     env = create_env(args.env_id, client_id=str(args.task), remotes=args.remotes, envWrap=args.envWrap, designHead=args.designHead,
-                        noLifeReward=args.noLifeReward, record=args.visualise, record_frequency=args.record_frequency, outdir=args.record_dir)
+                        noLifeReward=args.noLifeReward, record=visualise, record_frequency=args.record_frequency, outdir=args.record_dir)
     trainer = A3C(env, args.task, args.visualise, args.unsup, args.envWrap, args.designHead, args.noReward, args.bonus_bound)
 
     # logging
@@ -157,7 +160,7 @@ Setting up Tensorflow for data parallel work
     parser.add_argument('--psPort', default=12222, type=int, help='Port number for parameter server')
     parser.add_argument('--delay', default=0, type=int, help='delay start by these many seconds')
     parser.add_argument('--pretrain', type=str, default=None, help="Checkpoint dir (generally ..../train/) to load from.")
-    parser.add_argument('--record-frequency', type=int, default=100, help="Interval (in episodes) between saved videos")
+    parser.add_argument('--record-frequency', type=int, default=300, help="Interval (in episodes) between saved videos")
     parser.add_argument('--record-dir', type=str, default='tmp/model/videos', help="Path to directory where training videos should be saved")
     parser.add_argument('--bonus-bound', type=float, default=-1.0, help="Intrinsic reward bound. If reward is above this, it's set to 0")
     args = parser.parse_args()
