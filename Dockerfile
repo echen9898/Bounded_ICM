@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y \
     python3-dev python3-pip \
     make \
     cmake \
+    curl \
     gcc \
     git \
     golang \
@@ -47,3 +48,8 @@ COPY ./vizdoomgym /vizdoomgym
 WORKDIR /vizdoomgym
 RUN pip install -e /vizdoomgym
 WORKDIR /
+
+# Permissions
+RUN addgroup --gid 1024 docker
+RUN adduser --disabled-password --gecos "" --force-badname --ingroup docker docker_user
+USER docker_user

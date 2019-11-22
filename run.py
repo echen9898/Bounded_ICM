@@ -1,12 +1,11 @@
 
 import os, sys
 from copy import deepcopy
-from datetime import datetime
-import pytz
+import json, ast
 import argparse
 from six.moves import shlex_quote
 from params_manager import params_object
-
+from utilities.text_utils import *
 
 # ------------------------------------------- DEFAULTS ------------------------------------------- #
 
@@ -51,19 +50,6 @@ DEMO_PARAMS = {
 
 # arguments with 'action = store_true' in demo.py
 STORE_TRUE_DEMO = {'record', 'render', 'greedy', 'random'}
-
-# line indexes for the registry file
-REGISTRY = { 
-    'none_dense':0, 
-    'none_sparse':1,
-    'none_verySparse':2,
-    'icm_dense':3,
-    'icm_sparse':4, 
-    'icm_verySparse':5,
-    'icmpix_dense':6,
-    'icmpix_sparse':7,
-    'icmpix_verySparse':8
-}
 
 
 # ------------------------------------------- ARGUMENTS ------------------------------------------- #
@@ -114,6 +100,7 @@ parser.add_argument('-tag', default=None, help='The name associated with the mod
 
 # Training Parameters
 class ParameterObject(params_object.ParamsObject):
+    ''' Abstract parent class used to store items in the database '''
     @property
     def projectName(self):
         return 'params'
@@ -132,7 +119,7 @@ class TrainingParams(ParameterObject):
         return deepcopy(TRAINING_PARAMS)
 
 class ExperimentParams(ParameterObject):
-    ''' Object used to store an experiment, and a link to associated parameters '''
+    ''' Object used to store an experiment, and the db ID of associated parameters '''
     def __init__(self, training_params, usertag=None):
         self._training_params = training_params
         super(ExperimentParams, self).__init__(params=dict(), usertag=usertag)
@@ -144,107 +131,19 @@ class ExperimentParams(ParameterObject):
 
     def get_paths(self):
         paths = dict()
-        paths['exp'] = self.hash_name()
+        paths['experiment_hash'] = self.hash_name()
         return paths 
-
-
-# ------------------------------------------- UTILITIES ------------------------------------------- #
-
-flatten = lambda l: [item for sublist in l for item in sublist]
-
-def create_usertag(args):
-    ''' Create a usertag of the following format: alg_setting_# (e.g. icm_dense_3) '''
-    with open(args.registry, 'r') as registry:
-        registry_text = registry.readlines()
-
-        # Algorithm choice (none, icm, icmpix)
-        if args.unsup == None: algo = 'none'
-        elif args.unsup == 'action': algo = 'icm'
-        elif 'state' in args.unsup.lower(): algo = 'icmpix'
-
-        # Reward setting (dense, sparse, verySparse)
-        if 'very' in args.env_id.lower(): setting='verySparse'
-        elif 'sparse' in args.env_id.lower(): setting='sparse'
-        else: setting='dense'
-
-        combo = '{}_{}'.format(algo, setting) 
-        trial_number = str(int(registry_text[REGISTRY[combo]].strip()[-1])+1) 
-        usertag = '{}_{}'.format(combo, trial_number)
-        return usertag
-
-def dict_to_command(args, mode):
-    ''' Convert a dictionary into a sequence of command line arguments '''
-    if mode == 'train': 
-        store_true = STORE_TRUE_TRAIN
-        params = TRAINING_PARAMS
-    elif mode == 'demo': 
-        store_true = STORE_TRUE_DEMO
-        params = DEMO_PARAMS
-
-    cmd = ''
-    for argument in args:
-        value = args[argument]
-        if argument not in params:
-            continue
-        if argument in store_true:
-            if value == True: cmd += '--{} '.format(argument.replace('_', '-'))
-            continue
-        cmd += '--{} {} '.format(argument.replace('_', '-'), value)
-    return cmd
-
-def update_experiment_count(filename, usertag):
-    ''' Update the experiment counter in the registry file '''
-    usertag_pieces = usertag.split('_')
-    trial_number = int(usertag_pieces.pop(-1)) # increment the count by one
-    alg_and_setting = '_'.join(usertag_pieces)
-
-    file = open(filename, 'r')
-    lines = file.readlines()
-    file.close()
-    for i, line in enumerate(lines):
-        if line.split('=')[0].strip(' \n') == alg_and_setting:
-            lines[i] = alg_and_setting + ' = ' + str(trial_number) + '\n'
-    file = open(filename, 'w')
-    file.write(''.join(lines))
-    file.close()
-
-def get_model_info(args):
-    with open('./curiosity/src/tmp/usertag.txt', 'r') as usertag_file: usertag = usertag_file.read()
-    with open(args.registry, 'r') as registry: lines = registry.readlines()
-    for i, line in enumerate(lines):
-        stripped_line = flatten([n.strip().split(':') for n in line.split('|')])
-        if usertag in stripped_line:
-            params_hash = stripped_line[stripped_line.index('training_params_id') + 1].strip()
-    return usertag, params_hash
-
-def store_and_register(args, params, usertag):
-    ''' Store parameters in database, and update the experiment registry '''
-    # store parameters in database
-    trainParams = TrainingParams(params)
-    expParams = ExperimentParams(trainParams, usertag=usertag)
-    storage_path = expParams.get_paths()
-
-    # register the experiment in the registry
-    update_experiment_count(args.registry, usertag)
-    with open(args.registry, 'a')as registry:
-        time = datetime.now(pytz.timezone('US/Eastern'))
-        new_entry = '{} | {} | experiment_id: {} | training_params_id: {} \n'.format(time, \
-            usertag, storage_path['exp'], expParams.default_params()['params_hash'])
-        registry.write(new_entry)
-
-    # create a usertag.txt file in tmp with the correct usertag and datetime
-    with open('./curiosity/src/tmp/usertag.txt', 'w+') as file:
-        file.write('{}'.format(usertag))
 
 
 # ------------------------------------------- MAIN METHOD ------------------------------------------- #
 
 def generate_commands(args):
     ''' Generate relevant commands based on the specified operation '''
-    py_cmd = 'python'
-    commands = list()
-    params = dict()
-    usertag = str()
+    py_cmd = 'python' # python interpreter
+    commands = list() # commands that will eventually be executed
+    params = dict() # training or demo parameters fed to demo.py or train.py
+    usertag = str() # unique identifier corresponding to an experiment
+    save = False # whether or not to ask about saving parameters and updating experiment log
 
     if args.op == None: 
         print('---- No operation specified: use the -op flag')
@@ -256,29 +155,39 @@ def generate_commands(args):
     elif args.op == 'train':
         
         if os.path.isdir('./curiosity/src/tmp'):
-            inp = raw_input('tmp directory present -> resume training? (Y/N): ')
-            if inp == 'N': 
+            user_inp = raw_input('MODEL FILES PRESENT, RESUME TRAINING? -> (Y/N): ')
+            if user_inp != 'Y': 
                 print('---- Exiting with no changes')
-            elif inp == 'Y':
+            elif user_inp == 'Y':
 
-                usertag, params_hash = get_model_info(args)
+                with open('./curiosity/src/tmp/usertag.txt', 'r') as usertag_file: 
+                    usertag = usertag_file.read()
+                params_hash = get_value(usertag, 'params_id', args.registry)
 
-                # grab parameters from db
                 train = TrainingParams()
-                doc = train.find_by_id(params_hash)
-                params = dict_to_command(doc.next(), args.op)
-                params = params.replace('_', '-') # remember to replace '_' with '-'
+                params = train.find_by_id(params_hash).next()
 
                 # create training command (directory changes before this is run)
-                commands.append('{} train.py {}'.format(py_cmd, params))
+                commands.append('{} train.py {}'.format(py_cmd, dict_to_command(params, STORE_TRUE_TRAIN, TRAINING_PARAMS, args.op)))
                 print('---- Restarting existing training session')
 
-        elif args.tag: # no tmp file, old model parameters specified
-            # NEW TRAINING OP USING EXISTING PARAMS
-            print('n')
+        elif args.tag: # new model with old model parameters specified
 
-        else: # if no tmp file, start a new training op
+            # retrieve parameters from database
+            usertag = args.tag
+            params_hash = get_value(usertag, 'params_id', args.registry)
+            train = TrainingParams()
+            params_doc = train.find_by_id(params_hash).next()
+            params = {k.encode('ascii'): unicode(v).encode('ascii') for k,v in params_doc.iteritems() if k in TRAINING_PARAMS}
+            if params:
+                save = True
+                commands.append('{} train.py {}'.format(py_cmd, dict_to_command(params, STORE_TRUE_TRAIN, TRAINING_PARAMS, args.op)))
+                print('---- Starting a new training session with retrieved parameters')
+            else:
+                print('---- Couldnt find appropriate hash in experiment log')
 
+        else: # new model with new parameters
+            save = True
             usertag = create_usertag(args)
 
             # override arguments
@@ -288,8 +197,9 @@ def generate_commands(args):
                 if arg in TRAINING_PARAMS: params[arg] = getattr(args, arg)
 
             # create training command
-            cmd = '{} train.py {}'.format(py_cmd, dict_to_command(params, args.op)) # directory changes before this is run
+            cmd = '{} train.py {}'.format(py_cmd, dict_to_command(params, STORE_TRUE_TRAIN, TRAINING_PARAMS, args.op)) # directory changes before this is run
             commands.append(cmd)
+            print('---- Starting a new training session with new parameters')
 
 
     # RUN DEMO OP
@@ -300,20 +210,14 @@ def generate_commands(args):
 
         if not args.tag: # no usertag specified
             print('---- No model tag specified')
-            return list(), dict(), str()
+            return commands, params, usertag, save
 
         if not os.path.isdir('{}/{}'.format(result_path, args.tag)):
             print('---- Model {} not found'.format(args.tag))
-            return list(), dict(), str()
+            return commands, params, usertag, save
 
         # find most recent meta file
         nums = list()
-        def numeric(chars):
-            try:
-                float(chars)
-                return True
-            except ValueError:
-                return False
         for file in os.listdir('{}/{}/model/train'.format(result_path, args.tag)):
             nums += [int(n.split('-')[-1]) for n in file.split('.') if numeric(n.split('-')[-1])]
         nums.sort()
@@ -330,7 +234,7 @@ def generate_commands(args):
             elif arg in params: params[arg] = getattr(args, arg)
 
         # generate demo command
-        cmd = '{} demo.py {}'.format(py_cmd, dict_to_command(params, args.op))
+        cmd = '{} demo.py {}'.format(py_cmd, dict_to_command(params, STORE_TRUE_DEMO, DEMO_PARAMS, args.op))
         commands.append(cmd)
         print('---- Starting demo with model {} on env {}'.format(args.tag, params['env_id']))
 
@@ -341,7 +245,7 @@ def generate_commands(args):
         src_path = './curiosity/src' # source path
         result_path = './curiosity/results/icm' # results path
         if os.path.isdir('{}/tmp'.format(src_path)): # tmp is present, ask to store it
-            inp = raw_input('Tmp directory detected, store it? (Y/N): ')
+            inp = raw_input('MODEL FILES PRESENT, STORE THEM? -> (Y/N): ')
             if inp == 'N': 
                 print('---- Exiting with no changes')
             else:
@@ -352,27 +256,27 @@ def generate_commands(args):
             print('---- No tmp directory detected, and no model tag specified')
         else: # no tmp folder, target usertag provided
             if not os.path.isdir('{}/{}'.format(result_path, args.tag)):
-                print('Model {} not found'.format(args.tag))
-                return list(), dict(), str()
+                print('---- Model {} not found'.format(args.tag))
+                return commands, params, usertag, save
             commands.append('mv {}/{} {}/'.format(result_path, args.tag, src_path + '/tmp'))
 
-    return commands, params, usertag
+    return commands, params, usertag, save
 
 
 def run():
     args = parser.parse_args()
 
-    commands, params, usertag = generate_commands(args)
+    commands, params, usertag, save_params = generate_commands(args)
     commands = '\n'.join(commands)
 
     if len(commands) == 0: return
 
-    print('-'*50)
+    print('#'*70)
     print('Generated commands:')
-    print('~'*50)
+    print('-'*70)
     print(commands)
-    print('-'*50)
-    confirmation = raw_input('RUN COMMANDS? (Y/N): ')
+    print('#'*70)
+    confirmation = raw_input('RUN COMMANDS? -> (Y/N): ')
 
     if confirmation == 'Y':
         if args.op != 'swap': os.chdir('./curiosity/src')
@@ -380,15 +284,27 @@ def run():
         if args.op != 'swap': os.chdir('../../')
 
         # ask if you should save params/register the experiment
-        if args.op == 'train' and os.path.isdir('./curiosity/src/tmp'):
-            save = raw_input('SAVE/REGISTER EXPERIMENT? (Y/N): ') 
+        if save_params and os.path.isdir('./curiosity/src/tmp'):
+
+            save = raw_input('SAVE/REGISTER EXPERIMENT? -> (Y/N): ') 
             if save != 'Y':
                 print('---- Exiting without updating registry or database')
                 return
 
             os.system('sleep 5') # wait to be sure the experiment is successfully launched
             if params and usertag:
-                store_and_register(args, params, usertag)
+                repeat_count = get_value(usertag, 'repeats', args.registry)
+                if repeat_count == None: 
+                    repeat_count = 0
+                    trainParams = TrainingParams(params)
+                    expParams = ExperimentParams(trainParams, usertag=usertag)
+                    exp_id = expParams.get_paths()['experiment_hash']
+                    params_id = expParams.default_params()['params_hash']
+                else: 
+                    repeat_count = int(repeat_count) + 1
+                    exp_id = get_value(usertag, 'experiment_id', args.registry)
+                    params_id = get_value(usertag, 'params_id', args.registry)
+                update_registry(args, params, usertag, repeat_count, exp_id, params_id)
                 print('---- Successfully stored parameters, and updated registry')
 
     else:
@@ -396,6 +312,8 @@ def run():
 
 if __name__ == '__main__':
     run()
+
+
 
 
 

@@ -1,11 +1,15 @@
-none_dense = 0
+none_dense = 0 
 none_sparse = 0
 none_verySparse = 0
 icm_dense = 0
 icm_sparse = 1
-icm_verySparse = 0
+icm_verySparse = 0 
 icmpix_dense = 0
-icmpix_sparse = 0
+icmpix_sparse = 0 
 icmpix_verySparse = 0
 
-2019-11-19 03:05:02.377685-05:00 | icm_sparse_1 | experiment_id: 5dd3a22ef82ac42b3d1e2bf3 | training_params_id: 5dd3a22ef82ac42b3d1e2bf1 
+none_SuperMarioBros-1-1-v0 = 0
+icm_SuperMarioBros-1-1-v0 = 0 
+icmpix_SuperMarioBros-1-1-v0 = 0
+
+2019-11-19 03:05:02.377685-05:00 | icm_sparse_1 | repeats: 0 | experiment_id: 5dd3a22ef82ac42b3d1e2bf3 | training_params_id: 5dd3a22ef82ac42b3d1e2bf1 

@@ -191,7 +191,6 @@ class ParamsObject(object):
       if i == 0:
         keyVal = dat[k]
       if not keyVal == dat[k]:
-        #print (keyVal, dat[k])
         return False
     return True
     
@@ -277,8 +276,7 @@ class ParamsObject(object):
     """
     if type(_id) is str:
       _id = bson.objectid.ObjectId(_id)
-    assert type(_id) is bson.objectid.ObjectId 
-    print(self.dbColl) 
+    assert type(_id) is bson.objectid.ObjectId
     return self.dbColl.find({'_id': _id})
 
   def find_by_usertag(self, usertag):
