@@ -35,7 +35,8 @@ def run(args, server):
         visualise = args.visualise
     env = create_env(args.env_id, client_id=str(args.task), remotes=args.remotes, envWrap=args.envWrap, designHead=args.designHead,
                         noLifeReward=args.noLifeReward, record=visualise, record_frequency=args.record_frequency, outdir=args.record_dir)
-    trainer = A3C(env, args.task, args.visualise, args.unsup, args.envWrap, args.designHead, args.noReward, args.bonus_bound)
+
+    trainer = A3C(env, args.task, args.visualise, args.unsup, args.envWrap, args.designHead, args.noReward, args.bonus_bound, args.adv_norm)
 
     # logging
     if args.task == 0:
@@ -163,6 +164,7 @@ Setting up Tensorflow for data parallel work
     parser.add_argument('--record-frequency', type=int, default=300, help="Interval (in episodes) between saved videos")
     parser.add_argument('--record-dir', type=str, default='tmp/model/videos', help="Path to directory where training videos should be saved")
     parser.add_argument('--bonus-bound', type=float, default=-1.0, help="Intrinsic reward bound. If reward is above this, it's set to 0")
+    parser.add_argument('--adv-norm', action='store_true', help="Normalize batch advantages after each rollout")
     args = parser.parse_args()
 
     spec = cluster_spec(args.num_workers, 1, args.psPort)

@@ -1,5 +1,8 @@
 .DS_Store
 *.pyc
+pull.sh
+experiment_log.txt
+/curiosity/params
 /curiosity/models/output
 /curiosity/src/logs/*.log
 /curiosity/models/saved

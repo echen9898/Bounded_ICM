@@ -9,7 +9,8 @@ icmpix_sparse = 0
 icmpix_verySparse = 0
 
 none_SuperMarioBros-1-1-v0 = 0
-icm_SuperMarioBros-1-1-v0 = 0 
+icm_SuperMarioBros-1-1-v0 = 1 
 icmpix_SuperMarioBros-1-1-v0 = 0
 
 2019-11-19 03:05:02.377685-05:00 | icm_sparse_1 | repeats: 0 | experiment_id: 5dd3a22ef82ac42b3d1e2bf3 | training_params_id: 5dd3a22ef82ac42b3d1e2bf1 
+2019-11-22 21:33:40.521984-05:00 | icm_SuperMarioBros-1-1-v0_1 | repeats: 0 | experiment_id: 5dd89a844178299df803174d | params_id: 5dd89a844178299df803174b 

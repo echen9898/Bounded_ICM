@@ -20,7 +20,7 @@ def discount(x, gamma):
     """
     return scipy.signal.lfilter([1], [1, -gamma], x[::-1], axis=0)[::-1]
 
-def process_rollout(rollout, gamma, lambda_=1.0, clip=False):
+def process_rollout(rollout, gamma, lambda_=1.0, clip=False, adv_norm=False):
     """
     Given a rollout, compute its returns and the advantage.
     """
@@ -52,6 +52,14 @@ def process_rollout(rollout, gamma, lambda_=1.0, clip=False):
     # Eq (16): batch_adv_t = delta_t + gamma*delta_{t+1} + gamma^2*delta_{t+2} + ...
     delta_t = rewards + gamma * vpred_t[1:] - vpred_t[:-1]
     batch_adv = discount(delta_t, gamma * lambda_)
+    print('BATCH ADV: ', batch_adv)
+    print(np.mean(batch_adv), np.std(batch_adv))
+
+    # Normalize batch advantage
+    if adv_norm:
+        batch_adv = (batch_adv - np.mean(batch_adv))/np.std(batch_adv)
+        print('NORMED ADV: ', batch_adv)
+        print(np.mean(batch_adv), np.std(batch_adv))
 
     features = rollout.features[0]
 
@@ -260,7 +268,7 @@ def env_runner(env, policy, num_local_steps, summary_writer, render, predictor,
 
 
 class A3C(object):
-    def __init__(self, env, task, visualise, unsupType, envWrap=False, designHead='universe', noReward=False, bonus_bound=None):
+    def __init__(self, env, task, visualise, unsupType, envWrap=False, designHead='universe', noReward=False, bonus_bound=None, adv_norm=False):
         """
         An implementation of the A3C algorithm that is reasonably well-tuned for the VNC environments.
         Below, we will have a modest amount of complexity due to the way TensorFlow handles data parallelism.
@@ -271,6 +279,7 @@ class A3C(object):
         self.unsup = unsupType is not None
         self.envWrap = envWrap
         self.env = env
+        self.adv_norm = adv_norm
 
         predictor = None
         numaction = env.action_space.n
@@ -434,7 +443,7 @@ class A3C(object):
         """
         sess.run(self.sync)  # copy weights from shared to local
         rollout = self.pull_batch_from_queue()
-        batch = process_rollout(rollout, gamma=constants['GAMMA'], lambda_=constants['LAMBDA'], clip=self.envWrap)
+        batch = process_rollout(rollout, gamma=constants['GAMMA'], lambda_=constants['LAMBDA'], clip=self.envWrap, adv_norm=self.adv_norm)
         should_compute_summary = self.task == 0 and self.local_steps % 11 == 0
 
         if should_compute_summary:
