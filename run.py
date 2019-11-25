@@ -163,12 +163,10 @@ def generate_commands(args):
             elif user_inp == 'Y':
 
                 with open('./curiosity/src/tmp/usertag.txt', 'r') as usertag_file: 
-                    usertag = usertag_file.read()
+                    usertag = usertag_file.read().strip()
                 params_hash = get_value(usertag, 'params_id', args.registry)
-
                 train = TrainingParams()
                 params = train.find_by_id(params_hash).next()
-
                 # create training command (directory changes before this is run)
                 commands.append('{} train.py {}'.format(py_cmd, dict_to_command(params, STORE_TRUE_TRAIN, TRAINING_PARAMS, args.op)))
                 print('---- Restarting existing training session')

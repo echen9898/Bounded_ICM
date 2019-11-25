@@ -52,14 +52,10 @@ def process_rollout(rollout, gamma, lambda_=1.0, clip=False, adv_norm=False):
     # Eq (16): batch_adv_t = delta_t + gamma*delta_{t+1} + gamma^2*delta_{t+2} + ...
     delta_t = rewards + gamma * vpred_t[1:] - vpred_t[:-1]
     batch_adv = discount(delta_t, gamma * lambda_)
-    print('BATCH ADV: ', batch_adv)
-    print(np.mean(batch_adv), np.std(batch_adv))
 
     # Normalize batch advantage
     if adv_norm:
         batch_adv = (batch_adv - np.mean(batch_adv))/np.std(batch_adv)
-        print('NORMED ADV: ', batch_adv)
-        print(np.mean(batch_adv), np.std(batch_adv))
 
     features = rollout.features[0]
 
