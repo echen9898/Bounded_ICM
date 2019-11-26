@@ -57,7 +57,7 @@ def run(args, server):
     env = create_env(args.env_id, client_id=str(args.task), remotes=args.remotes, envWrap=args.envWrap, designHead=args.designHead,
                         noLifeReward=args.noLifeReward, record=visualise, record_frequency=args.record_frequency, outdir=args.record_dir)
     
-    trainer = A3C(env, args.task, args.visualise, args.unsup, args.envWrap, args.designHead, args.noReward, args.bonus_bound, args.adv_norm, obs_mean, obs_std)
+    trainer = A3C(env, args.task, args.visualise, args.unsup, args.envWrap, args.designHead, args.noReward, args.bonus_bound, args.adv_norm, obs_mean, obs_std, args.rew_norm)
 
     # logging
     if args.task == 0:
@@ -189,6 +189,7 @@ Setting up Tensorflow for data parallel work
     parser.add_argument('--bonus-bound', type=float, default=-1.0, help="Intrinsic reward bound. If reward is above this, it's set to 0")
     parser.add_argument('--adv-norm', action='store_true', help="Normalize batch advantages after each rollout")
     parser.add_argument('--obs-norm', action='store_true', help="Locally tandardize observations (pixelwise, individually by channel)")
+    parser.add_argument('--rew-norm', action='store_true', help="Normalize batch rewards by dividing by running standard deviation")
     args = parser.parse_args()
 
     spec = cluster_spec(args.num_workers, 1, args.psPort)

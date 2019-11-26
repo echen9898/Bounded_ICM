@@ -8,7 +8,9 @@ import scipy.signal
 import threading
 import distutils.version
 from constants import constants
+from utils import RunningMeanStd, update_mean_var_count_from_moments
 use_tf12_api = distutils.version.LooseVersion(tf.VERSION) >= distutils.version.LooseVersion('0.12.0')
+
 
 def discount(x, gamma):
     """
@@ -20,7 +22,7 @@ def discount(x, gamma):
     """
     return scipy.signal.lfilter([1], [1, -gamma], x[::-1], axis=0)[::-1]
 
-def process_rollout(rollout, gamma, lambda_=1.0, clip=False, adv_norm=False):
+def process_rollout(rollout, gamma, lambda_=1.0, clip=False, adv_norm=False, r_std_running=False):
     """
     Given a rollout, compute its returns and the advantage.
     """
@@ -31,9 +33,17 @@ def process_rollout(rollout, gamma, lambda_=1.0, clip=False, adv_norm=False):
         batch_si = np.asarray(rollout.states)
     batch_a = np.asarray(rollout.actions)
 
+    # Normalize rewards
+    rewards = np.asarray(rollout.rewards)
+    if r_std_running:
+        r_mean = np.mean(rewards)
+        r_std = np.std(rewards)
+        r_std_running.update_from_moments(r_mean, r_std**2, len(rewards))
+        rewards = rewards / np.sqrt(r_std_running.var)
+
     # collecting target for value network
     # V_t <-> r_t + gamma*r_{t+1} + ... + gamma^n*r_{t+n} + gamma^{n+1}*V_{n+1}
-    rewards_plus_v = np.asarray(rollout.rewards + [rollout.r])  # bootstrapping
+    rewards_plus_v = np.asarray(list(rewards) + [rollout.r])  # bootstrapping
     if rollout.unsup:
         rewards_plus_v += np.asarray(rollout.bonuses + [0])
     if clip:
@@ -41,7 +51,6 @@ def process_rollout(rollout, gamma, lambda_=1.0, clip=False, adv_norm=False):
     batch_r = discount(rewards_plus_v, gamma)[:-1]  # value network target
 
     # collecting target for policy network
-    rewards = np.asarray(rollout.rewards)
     if rollout.unsup:
         rewards += np.asarray(rollout.bonuses)
     if clip:
@@ -60,11 +69,11 @@ def process_rollout(rollout, gamma, lambda_=1.0, clip=False, adv_norm=False):
     features = rollout.features[0]
 
     if adv_norm:
-        return Batch(batch_si, batch_a, batch_adv_normed, batch_r, rollout.terminal, features)
+        return Batch(batch_si, batch_a, batch_adv_normed, batch_r, r_std_running, rollout.terminal, features)
     else:
-        return Batch(batch_si, batch_a, batch_adv, batch_r, rollout.terminal, features)
+        return Batch(batch_si, batch_a, batch_adv, batch_r, r_std_running, rollout.terminal, features)
 
-Batch = namedtuple("Batch", ["si", "a", "adv", "r", "terminal", "features"])
+Batch = namedtuple("Batch", ["si", "a", "adv", "r", "r_std_running", "terminal", "features"])
 
 class PartialRollout(object):
     """
@@ -188,7 +197,7 @@ def env_runner(env, policy, num_local_steps, summary_writer, render, predictor,
             state, reward, terminal, info = env.step(stepAct)
 
             # normalize observations if needed
-            if obs_mean.any() != None and obs_std.any() != None:
+            if obs_mean is not None and obs_std is not None:
                 state = (state-obs_mean)/obs_std
 
             if noReward:
@@ -275,7 +284,8 @@ def env_runner(env, policy, num_local_steps, summary_writer, render, predictor,
 
 
 class A3C(object):
-    def __init__(self, env, task, visualise, unsupType, envWrap=False, designHead='universe', noReward=False, bonus_bound=None, adv_norm=False, obs_mean=None, obs_std=None):
+    def __init__(self, env, task, visualise, unsupType, envWrap=False, designHead='universe', noReward=False, 
+                bonus_bound=None, adv_norm=False, obs_mean=None, obs_std=None, r_std_running=False):
         """
         An implementation of the A3C algorithm that is reasonably well-tuned for the VNC environments.
         Below, we will have a modest amount of complexity due to the way TensorFlow handles data parallelism.
@@ -287,6 +297,9 @@ class A3C(object):
         self.envWrap = envWrap
         self.env = env
         self.adv_norm = adv_norm
+        self.r_std_running = r_std_running
+        if self.r_std_running:
+            self.r_std_running = RunningMeanStd()
 
         predictor = None
         numaction = env.action_space.n
@@ -450,8 +463,9 @@ class A3C(object):
         """
         sess.run(self.sync)  # copy weights from shared to local
         rollout = self.pull_batch_from_queue()
-        batch = process_rollout(rollout, gamma=constants['GAMMA'], lambda_=constants['LAMBDA'], clip=self.envWrap, adv_norm=self.adv_norm)
+        batch = process_rollout(rollout, gamma=constants['GAMMA'], lambda_=constants['LAMBDA'], clip=self.envWrap, adv_norm=self.adv_norm, r_std_running=self.r_std_running)
         should_compute_summary = self.task == 0 and self.local_steps % 11 == 0
+        self.r_std_running = batch.r_std_running
 
         if should_compute_summary:
             fetches = [self.summary_op, self.train_op, self.global_step]
