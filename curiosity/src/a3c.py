@@ -64,7 +64,7 @@ def process_rollout(rollout, gamma, lambda_=1.0, clip=False, adv_norm=False, r_s
 
     # Normalize batch advantage
     if adv_norm:
-        batch_adv_normed = (batch_adv - np.mean(batch_adv))/np.std(batch_adv)
+        batch_adv_normed = (batch_adv - np.mean(batch_adv))/(np.std(batch_adv) + 1e-7)
 
     features = rollout.features[0]
 
