@@ -87,8 +87,9 @@ class ParamsObject(object):
     userKeys    = params.keys()
     defaultKeys = self._params.keys()
     if not set(userKeys).issubset(set(defaultKeys)):
-      print('ERROR: arguments are not a subset of default parameters')
-      raise
+      print('ERROR: arguments are not a subset of default parameters. Difference:')
+      print('Params passed in have the following keys not in default: ', set(userKeys) - set(defaultKeys))
+      raise Exception('DefaultError')
     #Update the parameters by user parameters 
     self._params.update(params)
     assert len(set(self._RESERVED_PARAM_NAMES_).intersection(set(defaultKeys))) == 0
