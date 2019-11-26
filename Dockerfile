@@ -48,8 +48,3 @@ COPY ./vizdoomgym /vizdoomgym
 WORKDIR /vizdoomgym
 RUN pip install -e /vizdoomgym
 WORKDIR /
-
-# # Permissions
-# RUN addgroup --gid 1000 ericchen
-# RUN adduser --disabled-password --gecos "" --force-badname --ingroup ericchen ericchen
-# USER ericchen

@@ -31,6 +31,7 @@ parser.add_argument('--record-frequency', type=int, default=300, help="Interval 
 parser.add_argument('--record-dir', type=str, default='tmp/model/videos', help="Path to directory where training videos should be saved")
 parser.add_argument('--bonus-bound', type=float, default=-1.0, help="Intrinsic reward bound. If reward is above this, it's set to 0")
 parser.add_argument('--adv-norm', action='store_true', help="Normalize batch advantages after each rollout")
+parser.add_argument('--obs-norm', action='store_true', help="Locally tandardize observations (pixelwise, individually by channel)")
 
 def new_cmd(session, name, cmd, mode, logdir, shell):
     if isinstance(cmd, (list, tuple)):
@@ -47,7 +48,7 @@ def create_commands(session, num_workers, remotes, env_id, logdir, shell='bash',
                     mode='tmux', visualise=False, envWrap=False, designHead=None,
                     unsup=None, noReward=False, noLifeReward=False, psPort=12222,
                     delay=0, savio=False, pretrain=None, record_frequency=None, record_dir='tmp/model/videos',
-                    bonus_bound=None, adv_norm=False):
+                    bonus_bound=None, adv_norm=False, obs_norm=False):
     # for launching the TF workers and for launching tensorboard
     py_cmd = 'python' if savio else sys.executable
     base_cmd = [
@@ -78,6 +79,8 @@ def create_commands(session, num_workers, remotes, env_id, logdir, shell='bash',
         base_cmd += ['--bonus-bound', bonus_bound]
     if adv_norm:
         base_cmd += ['--adv-norm']
+    if obs_norm:
+        base_cmd += ['--obs-norm']
     if pretrain not in [None, 'None']:
         base_cmd += ['--pretrain', pretrain]
     if remotes in [None, 'None']:
@@ -150,7 +153,7 @@ def run():
                                     noLifeReward=args.noLifeReward, psPort=psPort,
                                     delay=delay, savio=args.savio, pretrain=args.pretrain,
                                     record_frequency=args.record_frequency, record_dir=args.record_dir,
-                                    bonus_bound=args.bonus_bound, adv_norm=args.adv_norm)
+                                    bonus_bound=args.bonus_bound, adv_norm=args.adv_norm, obs_norm=args.obs_norm)
     if args.dry_run:
         print("Dry-run mode due to -n flag, otherwise the following commands would be executed:")
     else:

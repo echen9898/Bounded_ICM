@@ -52,18 +52,17 @@ def process_rollout(rollout, gamma, lambda_=1.0, clip=False, adv_norm=False):
     # Eq (16): batch_adv_t = delta_t + gamma*delta_{t+1} + gamma^2*delta_{t+2} + ...
     delta_t = rewards + gamma * vpred_t[1:] - vpred_t[:-1]
     batch_adv = discount(delta_t, gamma * lambda_)
-    print('BATCH ADV: ', batch_adv)
-    print(np.mean(batch_adv), np.std(batch_adv))
 
     # Normalize batch advantage
     if adv_norm:
-        batch_adv = (batch_adv - np.mean(batch_adv))/np.std(batch_adv)
-        print('NORMED ADV: ', batch_adv)
-        print(np.mean(batch_adv), np.std(batch_adv))
+        batch_adv_normed = (batch_adv - np.mean(batch_adv))/np.std(batch_adv)
 
     features = rollout.features[0]
 
-    return Batch(batch_si, batch_a, batch_adv, batch_r, rollout.terminal, features)
+    if adv_norm:
+        return Batch(batch_si, batch_a, batch_adv_normed, batch_r, rollout.terminal, features)
+    else:
+        return Batch(batch_si, batch_a, batch_adv, batch_r, rollout.terminal, features)
 
 Batch = namedtuple("Batch", ["si", "a", "adv", "r", "terminal", "features"])
 
@@ -118,7 +117,7 @@ class RunnerThread(threading.Thread):
     that would constantly interact with the environment and tell it what to do.  This thread is here.
     """
     def __init__(self, env, policy, num_local_steps, visualise, predictor, envWrap,
-                    noReward, bonus_bound):
+                    noReward, bonus_bound, obs_mean, obs_std):
         threading.Thread.__init__(self)
         self.queue = queue.Queue(5)  # ideally, should be 1. Mostly doesn't matter in our case.
         self.num_local_steps = num_local_steps
@@ -133,6 +132,8 @@ class RunnerThread(threading.Thread):
         self.envWrap = envWrap
         self.noReward = noReward
         self.bonus_bound = bonus_bound
+        self.obs_mean = obs_mean
+        self.obs_std = obs_std
 
     def start_runner(self, sess, summary_writer):
         self.sess = sess
@@ -146,7 +147,8 @@ class RunnerThread(threading.Thread):
     def _run(self):
         rollout_provider = env_runner(self.env, self.policy, self.num_local_steps,
                                         self.summary_writer, self.visualise, self.predictor,
-                                        self.envWrap, self.noReward, self.bonus_bound)
+                                        self.envWrap, self.noReward, self.bonus_bound, self.obs_mean,
+                                        self.obs_std)
         while True:
             # the timeout variable exists because apparently, if one worker dies, the other workers
             # won't die with it, unless the timeout is set to some large number.  This is an empirical
@@ -156,7 +158,7 @@ class RunnerThread(threading.Thread):
 
 
 def env_runner(env, policy, num_local_steps, summary_writer, render, predictor,
-                envWrap, noReward, bonus_bound):
+                envWrap, noReward, bonus_bound, obs_mean, obs_std):
     """
     The logic of the thread runner.  In brief, it constantly keeps on running
     the policy, and as long as the rollout exceeds a certain length, the thread
@@ -184,6 +186,11 @@ def env_runner(env, policy, num_local_steps, summary_writer, render, predictor,
             # run environment: get action_index from sampled one-hot 'action'
             stepAct = action.argmax()
             state, reward, terminal, info = env.step(stepAct)
+
+            # normalize observations if needed
+            if obs_mean.any() != None and obs_std.any() != None:
+                state = (state-obs_mean)/obs_std
+
             if noReward:
                 reward = 0.
             if render:
@@ -268,7 +275,7 @@ def env_runner(env, policy, num_local_steps, summary_writer, render, predictor,
 
 
 class A3C(object):
-    def __init__(self, env, task, visualise, unsupType, envWrap=False, designHead='universe', noReward=False, bonus_bound=None, adv_norm=False):
+    def __init__(self, env, task, visualise, unsupType, envWrap=False, designHead='universe', noReward=False, bonus_bound=None, adv_norm=False, obs_mean=None, obs_std=None):
         """
         An implementation of the A3C algorithm that is reasonably well-tuned for the VNC environments.
         Below, we will have a modest amount of complexity due to the way TensorFlow handles data parallelism.
@@ -344,7 +351,7 @@ class A3C(object):
 
 
             self.runner = RunnerThread(env, pi, constants['ROLLOUT_MAXLEN'], visualise,
-                                        predictor, envWrap, noReward, bonus_bound)
+                                        predictor, envWrap, noReward, bonus_bound, obs_mean, obs_std)
 
             # storing summaries
             bs = tf.to_float(tf.shape(pi.x)[0])

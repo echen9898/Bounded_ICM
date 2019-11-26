@@ -31,11 +31,13 @@ TRAINING_PARAMS = {
     'record_frequency':300, # in episodes
     'record_dir':'tmp/model/videos',
     'bonus_bound':-1.0,
-    'adv_norm':False
+    'adv_norm':False,
+    'obs_norm':False
 }
 
 # arguments with 'action = store_true' in train.py
-STORE_TRUE_TRAIN = {'dry_run', 'envWrap', 'noReward', 'noLifeReward', 'savio', 'default', 'adv_norm'}
+STORE_TRUE_TRAIN = {'dry_run', 'envWrap', 'noReward', 'noLifeReward', 
+                    'savio', 'default', 'adv_norm', 'obs_norm'}
 
 # default arguments for demonstration operations
 DEMO_PARAMS = {
@@ -83,6 +85,7 @@ parser.add_argument('-record-frequency', type=int, default=300, help="Interval (
 parser.add_argument('-record-dir', type=str, default='tmp/model/videos', help="Path to directory where training videos should be saved")
 parser.add_argument('-bonus-bound', type=float, default=-1.0, help="Intrinsic reward bound. If reward is above this, it's set to 0")
 parser.add_argument('-adv-norm', type=bool, default=False, help="Normalize batch advantages after each rollout")
+parser.add_argument('-obs-norm', type=bool, default=False, help="Locally tandardize observations (pixelwise, individually by channel)")
 
 # DEMO OP ARGUMENTS
 parser.add_argument('--ckpt', default="../models/doom/doom_ICM", help='checkpoint name')
