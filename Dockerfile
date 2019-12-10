@@ -41,7 +41,7 @@ RUN apt-get update && apt-get install -y \
     xorg-dev
 
 # Python Dependencies
-RUN pip install numpy vizdoom go_vncdriver
+RUN pip install numpy vizdoom go_vncdriver openpyxl
 COPY ./curiosity/requirements.txt /requirements.txt
 RUN pip install -r ./requirements.txt
 COPY ./vizdoomgym /vizdoomgym

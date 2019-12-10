@@ -49,11 +49,12 @@ DEMO_PARAMS = {
     'render':True,
     'num_episodes':2,
     'greedy':False,
-    'random':False
+    'random':False,
+    'obs_norm':False
 }
 
 # arguments with 'action = store_true' in demo.py
-STORE_TRUE_DEMO = {'record', 'render', 'greedy', 'random'}
+STORE_TRUE_DEMO = {'record', 'render', 'greedy', 'random', 'obs_norm'}
 
 
 # ------------------------------------------- ARGUMENTS ------------------------------------------- #
@@ -62,7 +63,7 @@ parser = argparse.ArgumentParser(description='Run high level tasks')
 
 # GENERAL ARGUMENTS
 parser.add_argument('-op', default=None, help='Which operation to run: swap, train, or demo')
-parser.add_argument('-registry', default='experiment_log.txt', help='Path to .txt file containing usertags and hash keys for all experiments')
+parser.add_argument('-registry', default='experiment_log.xlsx', help='Path to excel file containing information for all experiments')
 
 # TRAINING OP ARGUMENTS
 parser.add_argument('-num-workers', type=int, default=20, help="Number of workers")
@@ -96,8 +97,9 @@ parser.add_argument('--env-id', default="doom", help='Environment id')
 parser.add_argument('--record', type=bool, default=True, help="Record the policy running video")
 parser.add_argument('--render', type=bool, default=False, help="Render the gym environment video online")
 parser.add_argument('--num-episodes', type=int, default=2, help="Number of episodes to run")
-parser.add_argument('--greedy', type=bool, default=False, help="Default sampled policy. This option does argmax.")
-parser.add_argument('--random', type=bool, default=False, help="Default sampled policy. This option does random policy.")
+parser.add_argument('--greedy', type=bool, default=False, help="Default sampled policy. This option does argmax")
+parser.add_argument('--random', type=bool, default=False, help="Default sampled policy. This option does random policy")
+parser.add_argument('--obs-norm', type=bool, default=False, help="Whether or not you should normalize the observations")
 
 # SWAP OP ARGUMENTS
 parser.add_argument('-tag', default=None, help='The name associated with the model')
@@ -155,8 +157,8 @@ def generate_commands(args):
     if args.op == None: 
         print('---- No operation specified: use the -op flag')
 
-    elif args.op not in {'train', 'swap', 'demo'}:
-        print('---- Operation does not match any available (mispelled?)')
+    elif args.op not in {'train', 'swap', 'demo', 'wr'}:
+        print('---- Operation not available (mispelled?)')
         
     # RUN TRAINING OP
     elif args.op == 'train':
@@ -182,8 +184,9 @@ def generate_commands(args):
             usertag = args.tag
             params_hash = get_value(usertag, 'params_id', args.registry)
             train = TrainingParams()
-            params_doc = train.find_by_id(params_hash).next()
+            params_doc = train.find_by_id(params_hash.encode('utf-8')).next()
             params = {k.encode('ascii'): unicode(v).encode('ascii') for k,v in params_doc.iteritems() if k in TRAINING_PARAMS}
+            print(params)
             if params:
                 save = True
                 commands.append('{} train.py {}'.format(py_cmd, dict_to_command(params, STORE_TRUE_TRAIN, TRAINING_PARAMS, args.op)))
@@ -265,6 +268,11 @@ def generate_commands(args):
                 return commands, params, usertag, save
             commands.append('mv {}/{} {}/'.format(result_path, args.tag, src_path + '/tmp'))
 
+    elif args.op == 'wr':
+        workbook = openpyxl.load_workbook(filename="test.xlsx")
+        sheet = workbook['']
+        print(workbook.sheetnames)
+
     return commands, params, usertag, save
 
 
@@ -298,7 +306,7 @@ def run():
 
             os.system('sleep 5') # wait to be sure the experiment is successfully launched
             if params and usertag:
-                repeat_count = get_value(usertag, 'repeats', args.registry)
+                repeat_count = get_count(usertag, args.registry)
                 if repeat_count == None: 
                     repeat_count = 0
                     trainParams = TrainingParams(params)
@@ -306,10 +314,10 @@ def run():
                     exp_id = expParams.get_paths()['experiment_hash']
                     params_id = expParams.default_params()['params_hash']
                 else: 
-                    repeat_count = int(repeat_count) + 1
+                    repeat_count = int(repeat_count)
                     exp_id = get_value(usertag, 'experiment_id', args.registry)
                     params_id = get_value(usertag, 'params_id', args.registry)
-                update_registry(args, params, usertag, repeat_count, exp_id, params_id)
+                update_registry(args, usertag, repeat_count, exp_id, params_id)
                 print('---- Successfully stored parameters, and updated registry')
 
     else:

@@ -1,59 +1,118 @@
 
+import subprocess
+from openpyxl import load_workbook
+from openpyxl.styles import Alignment, Side, Border, Font
 from datetime import datetime
 import pytz
 
+# column indexes for all entry keys (0 indexed)
+COLS = {
+    'date':0,
+    'usertag':1,
+    'description':2,
+    'seed':3,
+    'experiment_id':4,
+    'params_id':5
+}
 
-flatten = lambda l: [item for sublist in l for item in sublist]
-log_entry = lambda time, usertag, repeat, exp_id, params_id: \
-            '{} | {} | {} | experiment_id: {} | params_id: {} \n' \
-            .format(time, usertag, repeat, exp_id, params_id)
+# row indexes of interest
+ROWS = {
+    'header':14
+}
 
-def get_line_index(query, file_path):
-    ''' Return line numbers where a specific query was found '''
-    with open(file_path, 'r') as file: lines = file.readlines()
-    return [i for i, l in enumerate(lines) if query in l]
+# dictionary of custom styles
+standard = Side(border_style='hair', color='FF000000')
+STYLES = {
+    'header_alignment':Alignment(vertical='top', horizontal='left'),
+    'header_font':Font(name='Calibri', size=11, color='FF000000', bold=True),
+    'header_border':Border(left=standard, right=standard, top=standard, bottom=standard, outline=standard),
+    'entry_alignment':Alignment(vertical='top', horizontal='left', wrap_text=True),
+    'entry_border':Border(left=standard, right=standard, top=standard, bottom=standard, outline=standard),
+    'entry_font':Font(name='Calibri', size=11, color='FF000000')
+}
 
-def write_to_line(entry, index, file_path):
-    ''' Write a line to a .txt file at the specified index '''
-    with open(file_path, 'r') as file: lines = file.readlines()
-    lines[index] = entry
-    with open(file_path, 'w') as file: file.write(''.join(lines))
+def format(sheet):
+    ''' Apply default styling to the entire spreadsheet '''
+    row_index = 0
+    for row in sheet.rows:
+        if row_index == ROWS['header']: row_type = 'header'
+        else: row_type = 'entry'
+        for cell in row:
+            cell.font = STYLES['{}_font'.format(row_type)]
+            cell.alignment = STYLES['{}_alignment'.format(row_type)]
+            cell.border = STYLES['{}_border'.format(row_type)]
+        row_index += 1
 
-def get_value(usertag, key, file_path):
-    ''' Looks through registry file to find key value pairs
-    of the form ' | key: value | ', and returns a value for
-    the corresponding usertag entry
+def row_generator(sheet):
+    ''' A generator for rows in an excel sheet '''
+    for row in sheet.iter_rows():
+        yield [cell.value for cell in row]
+
+def row_matrix(sheet, rows=(None, None)):
+    ''' Returns an excel sheet in matrix format. You can
+    optionally specify a range (in rows) and only this range
+    will be returned
     '''
-    try: index = get_line_index(usertag, file_path)[0]
-    except IndexError: return None
-    with open(file_path, 'r') as file: lines = file.readlines()
-    sections = lines[index].split('|')
-    pair = [sec.split(':') for sec in sections if key in sec]
-    return flatten(pair)[-1].strip()
+    table = list()
+    for row in sheet.iter_rows(min_row=rows[0], max_row=rows[1]):
+        table.append([cell.value for cell in row])
+    return table
+
+def get_row_index(query, registry_path, column=None):
+    ''' Return the row index (NOT 0 indexed) where a specific query was found. 
+    Takes in a string query, a path to the registry file, and the user can
+    optionally specify a specific column to search in if this is known
+    ahead of time.
+    '''
+    book = load_workbook(registry_path, read_only=True)
+    table = row_generator(book['Experiments'])
+    for i, elements in enumerate(table):
+        if column is not None and elements[column] == query: return i+1
+        elif column is None and query in elements: return i+1
+    return None
+
+def get_value(usertag, key, registry_path):
+    ''' Returns usertag specific information by key. '''
+    book = load_workbook(registry_path, read_only=True)
+    table = row_matrix(book['Experiments'])
+    row_index = get_row_index(usertag, registry_path, 1)
+    if row_index is None: return None
+    return table[row_index-1][COLS[key]]
+
+def get_count(query, registry_path):
+    ''' Returns the number of rows in which this query appears. Used
+    primarily to determine the seed number on repeated experiments
+    '''
+    book = load_workbook(registry_path, read_only=True)
+    table = row_generator(book['Experiments'])
+    count = 0
+    for row in table:
+        if query in row: count += 1
+    return count
 
 def create_usertag(args):
     ''' Create a usertag with the following format: alg_setting_# (e.g. icm_dense_3) '''
-    with open(args.registry, 'r') as registry:
-        registry_text = registry.readlines()
 
-        # Algorithm choice (none, icm, icmpix)
-        if args.unsup == None: algo = 'none'
-        elif args.unsup == 'action': algo = 'icm'
-        elif 'state' in args.unsup.lower(): algo = 'icmpix'
+    # Algorithm choice (none, icm, icmpix)
+    if args.unsup == None: algo = 'none'
+    elif args.unsup == 'action': algo = 'icm'
+    elif 'state' in args.unsup.lower(): algo = 'icmpix'
 
-        # Reward setting (dense, sparse, verySparse)
-        if 'doom' in args.env_id.lower():
-            if 'very' in args.env_id.lower(): setting='verySparse'
-            elif 'sparse' in args.env_id.lower(): setting='sparse'
-            else: setting='dense'
-        elif 'mario' in args.env_id.lower():
-            setting = args.env_id
+    # Reward setting (dense, sparse, verySparse)
+    if 'doom' in args.env_id.lower():
+        if 'very' in args.env_id.lower(): setting='verySparse'
+        elif 'sparse' in args.env_id.lower(): setting='sparse'
+        else: setting='dense'
+    elif 'mario' in args.env_id.lower():
+        setting = args.env_id
 
-        # Unique count id
-        index = get_line_index('{}_{} = '.format(algo, setting), args.registry)[0]
-        trial_number = str(int(registry_text[index].strip()[-1]) + 1) 
-        usertag = '{}_{}_{}'.format(algo, setting, trial_number)
-        return usertag
+    # Unique count id
+    row_index = get_row_index('{}_{}'.format(algo, setting), args.registry)
+    book = load_workbook(args.registry, read_only=True)
+    table = row_matrix(book['Experiments'])
+    trial_number = str(int(table[row_index-1][1]) + 1)
+    usertag = '{}_{}_{}'.format(algo, setting, trial_number)
+    return usertag
 
 def dict_to_command(args, store_true_args, default_params, mode):
     ''' Convert a dictionary into a sequence of command line arguments '''
@@ -63,32 +122,38 @@ def dict_to_command(args, store_true_args, default_params, mode):
         if argument not in default_params:
             continue
         if argument in store_true_args:
-            if value == True: cmd += '--{} '.format(argument.replace('_', '-'))
+            if value == 'True': cmd += '--{} '.format(argument.replace('_', '-'))
             continue
         cmd += '--{} {} '.format(argument.replace('_', '-'), value)
     return cmd
 
-def update_experiment_count(filename, usertag):
+def update_experiment_count(usertag, registry_path):
     ''' Update the experiment counter in the registry file '''
     usertag_pieces = usertag.split('_')
     trial_number = int(usertag_pieces.pop(-1)) # increment the count by one
     alg_and_setting = '_'.join(usertag_pieces)
-    index = get_line_index(alg_and_setting, filename)[0]
-    write_to_line('{} = {} \n'.format(alg_and_setting, trial_number), index, filename)
+    row_index = get_row_index(alg_and_setting, registry_path)
+    book = load_workbook(registry_path)
+    sheet = book['Experiments']
+    sheet.cell(row=row_index, column=2).value = trial_number
+    book.save(registry_path)
 
-def update_registry(args, params, usertag, num_repeats, exp_id, params_id):
-    ''' Store parameters in database, and update the experiment registry '''
+def update_registry(args, usertag, seed_num, exp_id, params_id):
+    ''' Update the experiment registry '''
 
-    # register the experiment in the registry
-    update_experiment_count(args.registry, usertag)
+    update_experiment_count(usertag, args.registry)
 
-    time = datetime.now(pytz.timezone('US/Eastern'))
-    new_entry = log_entry(time, usertag, 'repeats: {}'.format(num_repeats), exp_id, params_id)
-    try:
-        index = get_line_index(usertag, args.registry)[0]
-        write_to_line(new_entry, index, args.registry)
-    except IndexError:
-        with open(args.registry, 'a') as registry: registry.write(new_entry)
+    book = load_workbook(args.registry)
+    sheet = book['Experiments']
+    row_index = get_row_index(usertag, args.registry)
+    time = datetime.strftime(datetime.now(pytz.timezone('US/Eastern')), "%m-%d-%y %H:%M")
+    description = raw_input('ENTER A SHORT EXPERIMENT DESCRIPTION: ')
+    branch = subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD']).strip().decode('utf-8')
+    commit = subprocess.check_output(['git', 'rev-parse', 'HEAD']).strip().decode('utf-8')
+    sheet.append([time, usertag, description, seed_num, exp_id, params_id, '{}_{}'.format(branch, commit)])
+
+    format(sheet)
+    book.save(args.registry)
 
     # create a usertag.txt file in tmp with the correct usertag
     with open('./curiosity/src/tmp/usertag.txt', 'w+') as file:
@@ -101,9 +166,4 @@ def numeric(chars):
         return True
     except ValueError:
         return False
-
-
-
-
-
 

@@ -18,6 +18,24 @@ def inference(args):
     virtual_display = Display(visible=0, size=(1400, 900))
     virtual_display.start()
 
+    # Observation normalization
+    obs_mean = None
+    obs_std = None
+    if args.obs_norm:
+        tmp_env = create_env(args.env_id, client_id='0', remotes=None, envWrap=True, acRepeat=1,
+                            record=False, record_frequency=1, outdir=None)
+        observations = list()
+        _ = tmp_env.reset()
+        for _ in range(1000): # collect 10000 random observations
+            stepAct = np.random.randint(0, tmp_env.action_space.n) # random actions
+            state, _, terminal, _ = tmp_env.step(stepAct)
+            observations.append(state)
+            if terminal:
+                tmp_env.reset()
+        obs_mean = np.mean(observations, axis=0)
+        obs_std = np.std(observations, axis=0)
+        tmp_env.close()
+
     # define environment
     env = create_env(args.env_id, client_id='0', remotes=None, envWrap=True,
                         acRepeat=1, record=args.record, outdir=args.outdir)
@@ -38,6 +56,11 @@ def inference(args):
             state_out_1 = tf.get_collection("state_out_1")[0]
 
             last_state = env.reset()
+
+            # normalize observation if needed
+            if obs_mean is not None and obs_std is not None:
+                last_state = (last_state-obs_mean)/obs_std
+
             if args.render or args.record:
                 env.render()
             last_features = np.zeros((1, 256), np.float32); last_features = [last_features, last_features]
@@ -68,6 +91,10 @@ def inference(args):
                         else:
                             stepAct = action.argmax()
                     state, reward, terminal, info = env.step(stepAct)
+
+                    # normalize observations if needed
+                    if obs_mean is not None and obs_std is not None:
+                        state = (state-obs_mean)/obs_std
 
                     # update stats
                     length += 1
@@ -102,8 +129,9 @@ def main(_):
     parser.add_argument('--record', action='store_true', help="Record the policy running video")
     parser.add_argument('--render', action='store_true', help="Render the gym environment video online")
     parser.add_argument('--num-episodes', type=int, default=2, help="Number of episodes to run")
-    parser.add_argument('--greedy', action='store_true', help="Default sampled policy. This option does argmax.")
-    parser.add_argument('--random', action='store_true', help="Default sampled policy. This option does random policy.")
+    parser.add_argument('--greedy', action='store_true', help="Default sampled policy. This option does argmax")
+    parser.add_argument('--random', action='store_true', help="Default sampled policy. This option does random policy")
+    parser.add_argument('--obs-norm', action='store_true', help="Whether or not you should normalize the observations")
     args = parser.parse_args()
     inference(args)
 
