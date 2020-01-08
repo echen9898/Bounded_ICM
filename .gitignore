@@ -2,6 +2,7 @@
 *.pyc
 *.sh
 experiment_log.*
+plot.py
 /curiosity/params
 /curiosity/models/output
 /curiosity/src/logs/*.log
