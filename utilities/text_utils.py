@@ -122,7 +122,7 @@ def dict_to_command(args, store_true_args, default_params, mode):
         if argument not in default_params:
             continue
         if argument in store_true_args:
-            if value == 'True': cmd += '--{} '.format(argument.replace('_', '-'))
+            if value in {'True', True}: cmd += '--{} '.format(argument.replace('_', '-'))
             continue
         cmd += '--{} {} '.format(argument.replace('_', '-'), value)
     return cmd

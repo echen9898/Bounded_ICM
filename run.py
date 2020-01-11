@@ -123,6 +123,7 @@ parser.add_argument('--x-axis', default='step', help='The x axis value')
 parser.add_argument('--y-axis', default='global/episode_reward', help='The scalar value being plotted')
 parser.add_argument('--ave-runs', default=False, help='Whether or all runs should be plotted, or averaged')
 
+
 # ------------------------------------------- DATABASE ------------------------------------------- #
 
 # Training Parameters
@@ -166,8 +167,8 @@ class ExperimentParams(ParameterObject):
 
 def generate_commands(args):
     ''' Generate relevant commands based on the specified operation '''
-    py_cmd = 'python' # python interpreter
-    py3_cmd = 'python3' # python3 interpreter
+    py_cmd = 'python'
+    py3_cmd = 'python3'
     commands = list() # commands that will eventually be executed
     params = dict() # training or demo parameters fed to demo.py or train.py
     usertag = str() # unique identifier corresponding to an experiment
@@ -176,8 +177,8 @@ def generate_commands(args):
     if args.op == None: 
         print('---- No operation specified: use the -op flag')
 
-    elif args.op not in {'train', 'swap', 'demo', 'plot'}:
-        print('---- Operation {} not available'.format(args.op))
+    elif args.op not in {'train', 'swap', 'demo', 'plot', 'wr'}:
+        print('---- Operation not available (mispelled?)')
         
     # RUN TRAINING OP
     elif args.op == 'train':
@@ -186,7 +187,12 @@ def generate_commands(args):
             if sys.version_info[0] == 2: user_inp = raw_input('MODEL FILES PRESENT, RESUME TRAINING? -> (Y/N): ')
             elif sys.version_info[0] == 3: user_inp = input('MODEL FILES PRESENT, RESUME TRAINING? -> (Y/N): ')
             if user_inp != 'Y': 
-                print('---- Exiting with no changes')
+                user_inp = raw_input('REMOVE TMP FOLDER? -> (Y/N): ')
+                if user_inp != 'Y':
+                    print('---- Exiting with no changes')
+                elif user_inp == 'Y':
+                    os.system('rm -r ./curiosity/src/tmp')
+                    print('---- Removed. Exiting.')
             elif user_inp == 'Y':
 
                 with open('./curiosity/src/tmp/usertag.txt', 'r') as usertag_file: 
@@ -304,6 +310,23 @@ def generate_commands(args):
         cmd = '{} plot.py {}'.format(py3_cmd, dict_to_command(params, STORE_TRUE_PLOT, PLOT_PARAMS, args.op))
         commands.append(cmd)
 
+
+    # PLOTTING
+    elif args.op == 'plot':
+
+        if args.plot_tags is None:
+            print('---- No model tags specified')
+            return commands, params, usertag, save
+        params = deepcopy(PLOT_PARAMS)
+        arg_set = set(vars(args))
+        params['output_dir'] = getattr(args, 'output_dir')
+        for arg in vars(args):
+            if arg == 'output_dir' and getattr(args, arg) is None:
+                params[arg] = args.plot_tags.split('+')[0]
+            elif arg in PLOT_PARAMS: params[arg] = getattr(args, arg)
+        cmd = '{} plot.py {}'.format(py3_cmd, dict_to_command(params, STORE_TRUE_PLOT, PLOT_PARAMS, args.op))
+        commands.append(cmd)
+
     return commands, params, usertag, save
 
 
@@ -323,9 +346,9 @@ def run():
     if sys.version_info[0] == 2: confirmation = raw_input('RUN COMMANDS? -> (Y/N): ')
     elif sys.version_info[0] == 3: confirmation = input('RUN COMMANDS? -> (Y/N): ')
     if confirmation == 'Y':
-        if args.op not in {'swap', 'plot'}: os.chdir('./curiosity/src')
+        if args.op not in  {'swap', 'plot'}: os.chdir('./curiosity/src')
         os.system(commands)
-        if args.op not in {'swap', 'plot'}: os.chdir('../../')
+        if args.op not in  {'swap', 'plot'}: os.chdir('../../')
 
         # ask if you should save params/register the experiment
         if save_params and os.path.isdir('./curiosity/src/tmp'):
