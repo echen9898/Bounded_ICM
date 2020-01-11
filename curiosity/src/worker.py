@@ -98,7 +98,7 @@ def run(args, server):
             pretrain_saver.restore(ses, pretrain)
             logger.info("==> Done restoring model! Restored %d variables.", len(variables_to_restore))
 
-    config = tf.ConfigProto(device_filters=["/job:ps", "/job:worker/task:{}/cpu:0".format(args.task)])
+    config = tf.ConfigProto(device_filters=["/job:ps", "/job:worker/task:{}/cpu:0".format(args.task)], log_device_placement=True)
     logdir = os.path.join(args.log_dir, 'train')
 
     if use_tf12_api:
@@ -204,7 +204,7 @@ Setting up Tensorflow for data parallel work
 
     if args.job_name == "worker":
         server = tf.train.Server(cluster, job_name="worker", task_index=args.task,
-                                 config=tf.ConfigProto(intra_op_parallelism_threads=1, inter_op_parallelism_threads=2))
+                                 config=tf.ConfigProto(intra_op_parallelism_threads=1, inter_op_parallelism_threads=2, log_device_placement=True))
         if args.delay > 0:
             print('Startup delay in worker: {}s'.format(args.delay))
             time.sleep(args.delay)
