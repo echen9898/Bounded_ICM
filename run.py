@@ -50,11 +50,34 @@ DEMO_PARAMS = {
     'num_episodes':2,
     'greedy':False,
     'random':False,
-    'obs_norm':False
+    'obs_norm':False,
+    'demo':False
 }
 
 # arguments with 'action = store_true' in demo.py
-STORE_TRUE_DEMO = {'record', 'render', 'greedy', 'random', 'obs_norm'}
+STORE_TRUE_DEMO = {'record', 'render', 'greedy', 'random', 'obs_norm', 'demo'}
+
+# default arguments for inference operation
+INF_PARAMS = {
+    'log_dir':None, # defined during execution
+    'out_dir':None, # defined during execution
+    'env_id':'doom',
+    'record':True,
+    'recordSignal':False,
+    'render':True,
+    'envWrap':True,
+    'designHead':'universe',
+    'num_episodes':2,
+    'noop':False,
+    'acRepeat':0,
+    'greedy':False,
+    'random':False,
+    'default':True,
+    'demo':False
+}
+
+# arguments with 'action = store_true' in inference.py
+STORE_TRUE_INF = {'record', 'render', 'recordSignal', 'envWrap', 'noop', 'greedy', 'random', 'default', 'demo'}
 
 # default arguments for plot operations
 PLOT_PARAMS = {
@@ -76,6 +99,7 @@ parser = argparse.ArgumentParser(description='Run high level tasks')
 # GENERAL ARGUMENTS
 parser.add_argument('-op', default=None, help='Which operation to run: swap, train, demo, or plot')
 parser.add_argument('-registry', default='experiment_log.xlsx', help='Path to excel file containing information for all experiments')
+parser.add_argument('-tag', default=None, help='The name associated with the model you want to swap, run or do inference on')
 
 # TRAINING OP ARGUMENTS
 parser.add_argument('-num-workers', type=int, default=20, help='Number of workers')
@@ -95,7 +119,7 @@ parser.add_argument('-expId', type=int, default=0, help='Experiment Id >=0. Need
 parser.add_argument('-savio', type=bool, default=False, help='Savio or KNL cpu cluster hacks')
 parser.add_argument('-default', type=bool, default=False, help='run with default params')
 parser.add_argument('-pretrain', type=str, default=None, help='Checkpoint dir (generally ..../train/) to load from')
-parser.add_argument('-record-frequency', type=int, default=300, help='Interval (in episodes) between saved videos')
+parser.add_argument('-record-frequency', type=int, default=300, help='Interval (in episode ids) between saved videos')
 parser.add_argument('-record-dir', type=str, default='tmp/model/videos', help='Path to directory where training videos should be saved')
 parser.add_argument('-bonus-bound', type=float, default=-1.0, help='Intrinsic reward bound. If reward is above this, its set to 0')
 parser.add_argument('-adv-norm', type=bool, default=False, help='Normalize batch advantages after each rollout')
@@ -103,18 +127,33 @@ parser.add_argument('-obs-norm', type=bool, default=False, help='Locally tandard
 parser.add_argument('-rew-norm', type=bool, default=False, help='Normalize batch rewards by dividing by running standard deviation')
 
 # DEMO OP ARGUMENTS
-parser.add_argument('--ckpt', default='../models/doom/doom_ICM', help='checkpoint name')
-parser.add_argument('--outdir', default='../models/output', help='Output log directory')
-parser.add_argument('--env-id', default='doom', help='Environment id')
-parser.add_argument('--record', type=bool, default=True, help='Record the policy running video')
-parser.add_argument('--render', type=bool, default=False, help='Render the gym environment video online')
-parser.add_argument('--num-episodes', type=int, default=2, help='Number of episodes to run')
-parser.add_argument('--greedy', type=bool, default=False, help='Default sampled policy. This option does argmax')
-parser.add_argument('--random', type=bool, default=False, help='Default sampled policy. This option does random policy')
-parser.add_argument('--obs-norm', type=bool, default=False, help='Whether or not you should normalize the observations')
+# parser.add_argument('--ckpt', default='../models/doom/doom_ICM', help='Checkpoint name')
+# parser.add_argument('--outdir', default='../models/output', help='Output log directory')
+# parser.add_argument('--env-id', default='doom', help='Environment id')
+# parser.add_argument('--record', type=bool, default=True, help='Record the policy running video')
+# parser.add_argument('--render', type=bool, default=False, help='Render the gym environment video online')
+# parser.add_argument('--num-episodes', type=int, default=2, help='Number of episodes to run')
+# parser.add_argument('--greedy', type=bool, default=False, help='Default sampled policy. This option does argmax')
+# parser.add_argument('--random', type=bool, default=False, help='Default sampled policy. This option does random policy')
+# parser.add_argument('--obs-norm', type=bool, default=False, help='Whether or not you should normalize the observations')
+# parser.add_argument('--demo', type=bool, default=False, help='Whether or not youre using the demo model provided by the authors')
 
-# SWAP OP ARGUMENTS
-parser.add_argument('-tag', default=None, help='The name associated with the model')
+# INFERENCE OP ARGUMENTS
+parser.add_argument('--log-dir', default="tmp/doom", help='input model directory')
+parser.add_argument('--out-dir', default=None, help='output log directory. Default: log_dir/inference/')
+parser.add_argument('--env-id', default="PongDeterministic-v3", help='Environment id')
+parser.add_argument('--record', type=bool, default=True, help="Record the gym environment video -- user friendly")
+parser.add_argument('--recordSignal', type=bool, default=False, help="Record images of true processed input to network")
+parser.add_argument('--render', type=bool, default=True, help="Render the gym environment video online")
+parser.add_argument('--envWrap', type=bool, default=True, help="Preprocess input in env_wrapper (no change in input size or network)")
+parser.add_argument('--designHead', type=str, default='universe', help="Network deign head: nips or nature or doom or universe(default)")
+parser.add_argument('--num-episodes', type=int, default=2, help="Number of episodes to run")
+parser.add_argument('--noop', type=bool, default=False, help="Add 30-noop for inference too (recommended by Nature paper, don't know?)")
+parser.add_argument('--acRepeat', type=int, default=0, help="Actions to be repeated at inference. 0 means default. applies iff envWrap is True.")
+parser.add_argument('--greedy', type=bool, default=False, help="Default sampled policy. This option does argmax.")
+parser.add_argument('--random', type=bool, default=False, help="Default sampled policy. This option does random policy.")
+parser.add_argument('--default', type=bool, default=True, help="run with default params")
+parser.add_argument('--demo', type=bool, default=False, help="Whether or not youre using the demo model provided by the authors")
 
 # PLOT OP ARGUMENTS
 parser.add_argument('--plot-tags', default=None, help='Usertags you want to plot (separated by + signs)')
@@ -177,13 +216,13 @@ def generate_commands(args):
     if args.op == None: 
         print('---- No operation specified: use the -op flag')
 
-    elif args.op not in {'train', 'swap', 'demo', 'plot', 'wr'}:
+    elif args.op not in {'train', 'swap', 'demo', 'inference', 'plot', 'wr'}:
         print('---- Operation not available (mispelled?)')
         
     # RUN TRAINING OP
     elif args.op == 'train':
         
-        if os.path.exists('./curiosity/src/tmp/usertag.txt'):
+        if os.path.isdir('./curiosity/src/tmp'):
             if sys.version_info[0] == 2: user_inp = raw_input('MODEL FILES PRESENT, RESUME TRAINING? -> (Y/N): ')
             elif sys.version_info[0] == 3: user_inp = input('MODEL FILES PRESENT, RESUME TRAINING? -> (Y/N): ')
             if user_inp != 'Y': 
@@ -194,15 +233,17 @@ def generate_commands(args):
                     os.system('rm -r ./curiosity/src/tmp')
                     print('---- Removed. Exiting.')
             elif user_inp == 'Y':
-
-                with open('./curiosity/src/tmp/usertag.txt', 'r') as usertag_file: 
-                    usertag = usertag_file.read().strip()
-                params_hash = get_value(usertag, 'params_id', args.registry)
-                train = TrainingParams()
-                params = train.find_by_id(params_hash).next()
-                # create training command (directory changes before this is run)
-                commands.append('{} train.py {}'.format(py_cmd, dict_to_command(params, STORE_TRUE_TRAIN, TRAINING_PARAMS, args.op)))
-                print('---- Restarting existing training session: {}'.format(usertag))
+                if os.path.exists('./curiosity/src/tmp/usertag.txt'):
+                    with open('./curiosity/src/tmp/usertag.txt', 'r') as usertag_file: 
+                        usertag = usertag_file.read().strip()
+                    params_hash = get_value(usertag, 'params_id', args.registry)
+                    train = TrainingParams()
+                    params = train.find_by_id(params_hash).next()
+                    # create training command (directory changes before this is run)
+                    commands.append('{} train.py {}'.format(py_cmd, dict_to_command(params, STORE_TRUE_TRAIN, TRAINING_PARAMS, args.op)))
+                    print('---- Restarting existing training session: {}'.format(usertag))
+                else:
+                    print('---- No usertag.txt file in current tmp directory')
 
         elif args.tag: # new model with old model parameters specified
 
@@ -263,14 +304,52 @@ def generate_commands(args):
             if arg == 'outdir':
                 params[arg] = '{}/{}/demos'.format(demo_path, args.tag)
             elif arg == 'ckpt':
-                params[arg] = '{}/{}/model/train/model.ckpt-{}'.format(demo_path, args.tag, highest_global_step)
+                if args.demo:
+                    params[arg] = '../results/mario/mario_ICM'
+                else:
+                    params[arg] = '{}/{}/model/train/model.ckpt-{}'.format(demo_path, args.tag, highest_global_step)
             elif arg in params: params[arg] = getattr(args, arg)
 
         # generate demo command
-        cmd = '{} demo.py {}'.format(py_cmd, dict_to_command(params, STORE_TRUE_DEMO, DEMO_PARAMS, args.op))
+        cmd = '{} demo.py {}'.format(py_cmd, dict_to_command(params, STORE_TRUE_DEMO, DEMO_PARAMS, args.op)) 
         commands.append(cmd)
         print('---- Starting demo with model {} on env {}'.format(args.tag, params['env_id']))
 
+    # RUN INFERENCE OP
+    elif args.op == 'inference':
+
+        inf_path = '../results/icm'
+        result_path = './curiosity/results/icm'
+
+        if not args.tag: # no usertag specified
+            print('---- No model tag specified')
+            return commands, params, usertag, save
+
+        if not os.path.isdir('{}/{}'.format(result_path, args.tag)):
+            print('---- Model {} not found'.format(args.tag))
+            return commands, params, usertag, save
+
+        # find most recent meta file
+        nums = list()
+        for file in os.listdir('{}/{}/model/train'.format(result_path, args.tag)):
+            nums += [int(n.split('-')[-1]) for n in file.split('.') if numeric(n.split('-')[-1])]
+        nums.sort()
+        highest_global_step = int(nums[-1])
+
+        # override default arguments
+        params = deepcopy(INF_PARAMS)
+        arg_set = set(vars(args))
+        for arg in vars(args):
+            if arg == 'log_dir':
+                params[arg] = '{}/{}/model'.format(inf_path, args.tag)
+            elif arg == 'out_dir':
+                params[arg] = '{}/{}/demos'.format(inf_path, args.tag)
+            elif arg in params: params[arg] = getattr(args, arg)
+
+        # generate infernece command
+        cmd = '{} inference.py {}'.format(py_cmd, dict_to_command(params, STORE_TRUE_INF, INF_PARAMS, args.op))
+        commands.append(cmd)
+        print('---- Starting demo with model {} on env {}'.format(args.tag, params['env_id']))
 
     # SWAP TRAINING FILES
     elif args.op == 'swap':
@@ -294,24 +373,8 @@ def generate_commands(args):
                 return commands, params, usertag, save
             commands.append('mv {}/{} {}/'.format(result_path, args.tag, src_path + '/tmp'))
 
-    # PLOT RESULTS
-    elif args.op == 'plot':
 
-        if args.plot_tags is None:
-            print('---- No model tags specified')
-            return commands, params, usertag, save
-        params = deepcopy(PLOT_PARAMS)
-        arg_set = set(vars(args))
-        params['output_dir'] = getattr(args, 'output_dir')
-        for arg in vars(args):
-            if arg == 'output_dir' and getattr(args, arg) is None:
-                params[arg] = args.plot_tags.split('+')[0]
-            elif arg in PLOT_PARAMS: params[arg] = getattr(args, arg)
-        cmd = '{} plot.py {}'.format(py3_cmd, dict_to_command(params, STORE_TRUE_PLOT, PLOT_PARAMS, args.op))
-        commands.append(cmd)
-
-
-    # PLOTTING
+    # PLOTTING OP
     elif args.op == 'plot':
 
         if args.plot_tags is None:

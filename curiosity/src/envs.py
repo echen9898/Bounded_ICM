@@ -62,10 +62,10 @@ def create_doom(env_id, client_id, envWrap=True, record=False, outdir=None,
     acwrapper = vizdoomgym.envs.doom_wrappers.ToDiscrete('minimal')
     env = obwrapper(acwrapper(env))
     # env = env_wrapper.MakeEnvDynamic(env)  # to add stochasticity
-    
+
     if record and outdir is not None:
         if record_frequency:
-            env = wrappers.Monitor(env, outdir, video_callable=lambda episode: episode%record_frequency==0, force=True)
+            env = wrappers.Monitor(env, outdir, video_callable=lambda episode_id: episode_id%record_frequency==0, force=True)
         else:
             env = wrappers.Monitor(env, outdir, force=True)
 
@@ -86,7 +86,7 @@ def create_doom(env_id, client_id, envWrap=True, record=False, outdir=None,
     return env
 
 def create_mario(env_id, client_id, envWrap=True, record=False, outdir=None,
-                    noLifeReward=False, acRepeat=0, **_):
+                    noLifeReward=False, acRepeat=0, record_frequency=None, **_):
     import ppaquette_gym_super_mario
     from ppaquette_gym_super_mario import wrappers
     if '-v' in env_id.lower():
@@ -106,7 +106,10 @@ def create_mario(env_id, client_id, envWrap=True, record=False, outdir=None,
     env = env_wrapper.MarioEnv(env)
 
     if record and outdir is not None:
-        env = gym.wrappers.Monitor(env, outdir, force=True)
+        if record_frequency:
+            env = gym.wrappers.Monitor(env, outdir, video_callable=lambda episode_id: episode_id%record_frequency==0, force=True)
+        else:
+            env = gym.wrappers.Monitor(env, outdir, force=True)
 
     if envWrap:
         frame_skip = acRepeat if acRepeat>0 else 6
@@ -381,3 +384,5 @@ class FlashRescale(vectorized.ObservationWrapper):
 
     def _observation(self, observation_n):
         return [_process_frame_flash(observation) for observation in observation_n]
+
+

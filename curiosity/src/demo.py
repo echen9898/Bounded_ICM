@@ -117,8 +117,8 @@ def inference(args):
                             env.render(mode='rgb_array')
                         break
 
-        logger.info('Finished %d true episodes.', args.num_episodes)
-        env.close()
+    logger.info('Finished %d true episodes.', args.num_episodes)
+    env.close()
 
 
 def main(_):
@@ -132,6 +132,7 @@ def main(_):
     parser.add_argument('--greedy', action='store_true', help="Default sampled policy. This option does argmax")
     parser.add_argument('--random', action='store_true', help="Default sampled policy. This option does random policy")
     parser.add_argument('--obs-norm', action='store_true', help="Whether or not you should normalize the observations")
+    parser.add_argument('--demo', action='store_true', help='Whether or not youre using the demo model provided by the authors')
     args = parser.parse_args()
     inference(args)
 

@@ -10,10 +10,15 @@ import ppaquette_gym_super_mario
 from ppaquette_gym_super_mario import wrappers
 import numpy as np
 import time
+from pyvirtualdisplay import Display
 from PIL import Image
 import utils
 
-outputdir = './gray42/'
+# virtual display (headless remotes)
+virtual_display = Display(visible=0, size=(1400, 900))
+virtual_display.start()
+
+outputdir = './mario_test/'
 env_id = 'ppaquette/SuperMarioBros-1-1-v0'
 env = gym.make(env_id)
 modewrapper = wrappers.SetPlayingMode('algo')
@@ -24,9 +29,9 @@ env = env_wrapper.MarioEnv(env)
 freshape = fshape = (42, 42)
 env.seed(None)
 env = env_wrapper.NoNegativeRewardEnv(env)
-env = env_wrapper.DQNObsEnv(env, shape=freshape)
+# env = env_wrapper.DQNObsEnv(env, shape=freshape)
 env = env_wrapper.BufferedObsEnv(env, n=4, skip=1, shape=fshape, channel_last=True)
-env = env_wrapper.EltwiseScaleObsEnv(env)
+# env = env_wrapper.EltwiseScaleObsEnv(env)
 
 start = time.time()
 episodes = 0
@@ -36,7 +41,7 @@ imCount = 1
 utils.mkdir_p(outputdir + '/ep_%02d/'%(episodes+1))
 while(1):
     obs, reward, done, info = env.step(env.action_space.sample())
-    Image.fromarray((255*obs).astype('uint8')).save(outputdir + '/ep_%02d/%06d.jpg'%(episodes+1,imCount))
+    Image.fromarray((255*obs).astype('uint8')).save(outputdir + '/ep_%02d/%06d.png'%(episodes+1,imCount))
     imCount += 1
     if done:
         episodes += 1
