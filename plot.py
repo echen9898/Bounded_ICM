@@ -128,7 +128,7 @@ def plot_tags(args):
         df = extract_data(usertag, tags, args) # either averaged, or train_0
 
         # Process data
-        df = df.ewm(span=200).mean()
+        df = df.ewm(span=100).mean()
 
         # Plot
         # plot = scatter_plot(args.x_axis, 'value', df)
