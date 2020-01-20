@@ -3,6 +3,7 @@
 *.sh
 experiment_log.*
 plot.py
+ops.py
 /curiosity/params
 /curiosity/models/output
 /curiosity/src/logs/*.log

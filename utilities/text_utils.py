@@ -31,6 +31,11 @@ STYLES = {
     'entry_font':Font(name='Calibri', size=11, color='FF000000')
 }
 
+def wrap_print(text):
+    print('-'*50)
+    print(text)
+    print('-'*50)
+
 def format(sheet):
     ''' Apply default styling to the entire spreadsheet '''
     row_index = 0

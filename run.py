@@ -425,8 +425,7 @@ def run():
             os.system('sleep 5') # wait to be sure the experiment is successfully launched
             if params and usertag:
                 repeat_count = get_count(usertag, args.registry)
-                if repeat_count == None: 
-                    repeat_count = 0
+                if repeat_count == 0:
                     trainParams = TrainingParams(params)
                     expParams = ExperimentParams(trainParams, usertag=usertag)
                     exp_id = expParams.get_paths()['experiment_hash']
