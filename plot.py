@@ -10,7 +10,7 @@ from tensorboard.backend.event_processing import event_accumulator
 
 # ------------------------------------------- DEFAULTS ------------------------------------------- #
 RESULTS_PATH = './curiosity/results/icm'
-
+SPAN = 150 # smoothing parameter
 
 # ------------------------------------------- ARGUMENTS ------------------------------------------- #
 parser = argparse.ArgumentParser(description='Run plotting script')
@@ -19,8 +19,9 @@ parser.add_argument('--plot-tags', default=None, help='Which operation to run: s
 parser.add_argument('--output-dir', default=None, help='Usertag directory where you want to save plots')
 parser.add_argument('--x-axis', default='step', help='The x axis value')
 parser.add_argument('--y-axis', default='global/episode_reward', help='The scalar value being plotted')
-parser.add_argument('--ave-runs', default=False, help='Whether or all runs should be plotted, or averaged')
-# parser.add_argument('--mode', default='') # all scalars or just a single value
+parser.add_argument('--ave-runs', default=True, help='Whether or not each plot tag should plot train_0, or all runs averaged')
+parser.add_argument('--ave-tags', default=False, help='Whether or not specified plot tags should be plotted individually, or averaged')
+parser.add_argument('--x-increment', default=10000, help='Spacing between x-axis values. Only used when averaging multiple curves.')
 
 
 # ------------------------------------------- STYLING ------------------------------------------- #
@@ -51,7 +52,24 @@ def style(args):
     ax.set_xticklabels(get_new_labels())
 
 
-# ------------------------------------------- MAIN METHODS ------------------------------------------- #
+# ------------------------------------------- UTILITIES ------------------------------------------- #
+def interpolate(df, args):
+    ''' Takes in a dataframe, and interpolates values for new x values based
+    on arguments (x_axis, y_axis).
+    '''
+
+    # FOLD THIS INTO ARGS
+    x_vals = np.arange(0, 7000000, int(args.x_increment))
+
+    values = list()
+    for x in x_vals:
+        # The following sort of complicated line finds the nearest existing upper/lower bound to x
+        # and then averages their values and appends it
+        values.append(df.loc[(df[args.x_axis]-x).abs().argsort()[:2]].mean()['value'])
+
+    return pd.DataFrame({'step':list(x_vals), 'value':values})
+
+
 def extract_data(usertag, tags, args):
     ''' Reads in a usertag specifying the model to extract from. Extracts
     a csv file for each run by concatenating all events files for the .
@@ -65,12 +83,10 @@ def extract_data(usertag, tags, args):
         print('---- No scalar value specified')
         return
 
-    # Overlaid plots just use train_0, while all runs can be plotted for a single tag
-    if len(tags) > 1: train_dirs = ['train_0']
-    else: train_dirs = [d for d in os.listdir() if 'train_' in d]
-
     # Extract csv's for all runs
-    dataframes = list() # dataframes of each run
+    train_dirs = [d for d in os.listdir() if 'train_' in d]
+    worker_dfs = list() # dataframes for each worker (train_0, train_1, etc)
+    count = 0
     for d in train_dirs:
         os.chdir(d)
         events = [file for file in os.listdir() if 'events.out.tfevents' in file]
@@ -84,22 +100,30 @@ def extract_data(usertag, tags, args):
 
         # Save dataframe for this worker
         filename = '_'.join([usertag, args.y_axis.split('/')[-1], d.split('_')[-1]])
-        run_df = pd.concat(event_frames)
+        print('Extracted {}'.format(filename))
+        worker_df = pd.concat(event_frames)
+
+        worker_df = worker_df.ewm(span=SPAN).mean() # smooth curve
+
+        # TEMPORARY:
+        # worker_df.to_csv('{}.csv'.format(filename))
+        # os.system('mv {}.csv ../../../{}/plots'.format(filename, args.output_dir))
+        # int_df.to_csv('{}_INT.csv'.format(filename))
+        # os.system('mv {}_INT.csv ../../../{}/plots'.format(filename, args.output_dir))
 
         os.chdir('../')
 
-        if args.ave_runs == 'False':
-            return run_df # RETURN TRAIN_0
-            # run_df.to_csv('{}.csv'.format(filename))
-            # os.system('mv {}.csv ../../../{}/plots/data/'.format(filename, args.output_dir))
-        else: 
-            dataframes.append(run_df)
+        if args.ave_runs in {False, 'False'}: return worker_df # return train_0
 
-    if args.ave_runs == 'True':
-        print('TODO: Average dataframes together, and return single dataframe')
-        # pd.concat(dataframes, axis=1).to_csv('{}_averaged.csv'.format(usertag))
-        # os.system('mv {}_averaged.csv ../../{}/plots/data/'.format(usertag, args.output_dir))
+        # Interpolate results, and stack them
+        interp_df = interpolate(worker_df, args) # interpolate on a common x-axis
+        if count == 0: final_df = interp_df # start of the stack
+        else: final_df = pd.concat((final_df, interp_df)) # add to the stack
+        count += 1
 
+    return final_df.groupby(level=0).mean() # group and average
+
+# ------------------------------------------- MAIN ------------------------------------------- #
 def plot_tags(args):
     ''' Usertags are passed in separated by '+' signs
     '''
@@ -113,9 +137,10 @@ def plot_tags(args):
     if not os.path.isdir('./{}/plots/'.format(args.output_dir)): 
         os.system('mkdir -p ./{}/plots/'.format(args.output_dir))
 
-    # For each tag, extract csv values, and plot
+    # Extract a dataframe for each curve
     tags = args.plot_tags.split('+')
     tags = [t.strip() for t in tags]
+    count = 0
     for usertag in tags:
 
         # If usertag directory doesn't exist
@@ -127,14 +152,21 @@ def plot_tags(args):
         os.chdir('{}/model'.format(usertag))
         df = extract_data(usertag, tags, args) # either averaged, or train_0
 
-        # Process data
-        df = df.ewm(span=100).mean()
-
-        # Plot
-        # plot = scatter_plot(args.x_axis, 'value', df)
-        plot = sb.lineplot(x=args.x_axis, y='value', data=df, label='{}'.format(usertag.replace('_', ' ')))
+        # Plot each curve
+        if args.ave_tags in {False, 'False'}:
+            plot = sb.lineplot(x=args.x_axis, y='value', data=df, label='{}'.format(usertag.replace('_', ' ')))
+        # or ... concatenate them and plot at the end
+        else:
+            if count == 0: final_df = df
+            else: final_df = pd.concat((final_df, df))
+            count += 1
 
         os.chdir('../'*2)
+
+    # If averaging over tags, plot them here at the end
+    if args.ave_tags in {True, 'True'}:
+        final_df = final_df.groupby(level=0).mean()
+        plot = sb.lineplot(x=args.x_axis, y='value', data=final_df, label='{}'.format('Averaged tags: {}'.format(tags)))
 
     # Save plot option
     style(args)
@@ -143,7 +175,9 @@ def plot_tags(args):
     elif sys.version_info[0] == 3: user_inp = input('SAVE PLOT? -> (Y/N): ')
     if user_inp == 'Y':
         print('---- Saving plot in {} directory'.format(args.output_dir))
-        savename = '{}.jpg'.format('_'.join([tags[0], args.y_axis.split('/')[-1]]))
+        if args.ave_tags in {True, 'True'}: savename = '{}_averaged_tags.jpg'.format('_'.join([tags[0], args.y_axis.split('/')[-1]]))
+        elif args.ave_runs in {True, 'True'}: savename = '{}_averaged_runs.jpg'.format('_'.join([tags[0], args.y_axis.split('/')[-1]]))
+        else: savename = '{}.jpg'.format('_'.join([tags[0], args.y_axis.split('/')[-1]]))
         os.chdir('./{}/plots/'.format(args.output_dir))
         plot.get_figure().savefig(savename)
     else:
@@ -151,7 +185,6 @@ def plot_tags(args):
         return
 
 
-# ------------------------------------------- MAIN METHOD ------------------------------------------- #
 if __name__ == '__main__':
     args = parser.parse_args()
     plot_tags(args)

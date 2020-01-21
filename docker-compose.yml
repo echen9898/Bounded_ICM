@@ -21,6 +21,6 @@ services:
     volumes:
       - ./:/bounded_curiosity
     ports:
-      - '12346:12346'
+      - '8080:8080'
     tty: true
     stdin_open: true

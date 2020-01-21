@@ -85,7 +85,9 @@ PLOT_PARAMS = {
     'output_dir':None,
     'x_axis':'step',
     'y_axis':'global/episode_reward',
-    'ave_runs':True
+    'ave_runs':True,
+    'ave_tags':False,
+    'x_increment':10000
 }
 
 # arguments with 'action = store_true' in plot.py
@@ -160,7 +162,9 @@ parser.add_argument('--plot-tags', default=None, help='Usertags you want to plot
 parser.add_argument('--output-dir', default=None, help='Usertag directory where you want to save plots')
 parser.add_argument('--x-axis', default='step', help='The x axis value')
 parser.add_argument('--y-axis', default='global/episode_reward', help='The scalar value being plotted')
-parser.add_argument('--ave-runs', default=False, help='Whether or all runs should be plotted, or averaged')
+parser.add_argument('--ave-runs', default=True, help='Whether or not each plot tag should plot train_0, or all runs averaged')
+parser.add_argument('--ave-tags', default=False, help='Whether or not specified plot tags should be plotted individually, or averaged')
+parser.add_argument('--x-increment', default=10000, help='Spacing between x-axis values. Only used when averaging runs, or averaging plot tags')
 
 
 # ------------------------------------------- DATABASE ------------------------------------------- #
@@ -247,16 +251,22 @@ def generate_commands(args):
 
         elif args.tag: # new model with old model parameters specified
 
-            # retrieve parameters from database
-            usertag = args.tag
-            params_hash = get_value(usertag, 'params_id', args.registry)
+            # check if the requested old model exists in the log
+            sourcetag = args.tag
+            if get_value(sourcetag, 'usertag', args.registry) is None:
+                print('---- Model {} does not exist in experiment log'.format(sourcetag))
+                return commands, params, sourcetag, save
+
+            # create a new usertag for this seed and retrieve parameters from database
+            usertag = create_usertag(args)
+            params_hash = get_value(sourcetag, 'params_id', args.registry)
             train = TrainingParams()
             params_doc = train.find_by_id(params_hash.encode('utf-8')).next()
             params = {k.encode('ascii'): unicode(v).encode('ascii') for k,v in params_doc.iteritems() if k in TRAINING_PARAMS}
             if params:
                 save = True
                 commands.append('{} train.py {}'.format(py_cmd, dict_to_command(params, STORE_TRUE_TRAIN, TRAINING_PARAMS, args.op)))
-                print('---- Starting a new training session with same parameters as {}'.format(usertag))
+                print('---- Starting a new training session {} with same parameters as {}'.format(usertag, sourcetag))
             else:
                 print('---- Couldnt find appropriate hash in experiment log')
 

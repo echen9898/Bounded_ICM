@@ -36,6 +36,7 @@ def wrap_print(text):
     print(text)
     print('-'*50)
 
+
 def format(sheet):
     ''' Apply default styling to the entire spreadsheet '''
     row_index = 0
@@ -84,19 +85,34 @@ def get_value(usertag, key, registry_path):
     if row_index is None: return None
     return table[row_index-1][COLS[key]]
 
-def get_count(query, registry_path):
-    ''' Returns the number of rows in which this query appears. Used
+def get_count(query, registry_path, verbatim=True):
+    ''' Returns the number of rows in which this query appears. If verbatim option
+    is True, then query 'abc' would yield 0 even if 'abcd' is in the log. If verbatim
+    is False, then if any element contains the entry it will be counted. Used
     primarily to determine the seed number on repeated experiments
     '''
     book = load_workbook(registry_path, read_only=True)
     table = row_generator(book['Experiments'])
     count = 0
     for row in table:
-        if query in row: count += 1
+        if verbatim:
+            if query in row: count += 1
+        else:
+            row_strings = list()
+            for el in row:
+                try: row_strings.append(el.encode('utf-8'))
+                except: continue
+            for el in row_strings:
+                if query in el: count += 1
     return count
 
 def create_usertag(args):
     ''' Create a usertag with the following format: alg_setting_# (e.g. icm_dense_3) '''
+
+    if args.tag: # rerunning 
+        usertag = args.tag.split('.')
+        usertag[1] = str(get_count(usertag[0], args.registry, verbatim=False))
+        return '.'.join(usertag)
 
     # Algorithm choice (none, icm, icmpix)
     if args.unsup == None: algo = 'none'
@@ -116,8 +132,11 @@ def create_usertag(args):
     book = load_workbook(args.registry, read_only=True)
     table = row_matrix(book['Experiments'])
     trial_number = str(int(table[row_index-1][1]) + 1)
-    usertag = '{}_{}_{}'.format(algo, setting, trial_number)
-    return usertag
+
+    # Seed number
+    seed = get_count('{}_{}_{}'.format(algo, setting, trial_number), args.registry)
+
+    return '{}_{}_{}.{}'.format(algo, setting, trial_number, seed)
 
 def dict_to_command(args, store_true_args, default_params, mode):
     ''' Convert a dictionary into a sequence of command line arguments '''
