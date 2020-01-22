@@ -155,7 +155,7 @@ def dict_to_command(args, store_true_args, default_params, mode):
 def update_experiment_count(usertag, registry_path):
     ''' Update the experiment counter in the registry file '''
     usertag_pieces = usertag.split('_')
-    trial_number = int(usertag_pieces.pop(-1)) # increment the count by one
+    trial_number = int(float(usertag_pieces.pop(-1))) # increment the count by one
     alg_and_setting = '_'.join(usertag_pieces)
     row_index = get_row_index(alg_and_setting, registry_path)
     book = load_workbook(registry_path)
@@ -166,7 +166,8 @@ def update_experiment_count(usertag, registry_path):
 def update_registry(args, usertag, seed_num, exp_id, params_id):
     ''' Update the experiment registry '''
 
-    update_experiment_count(usertag, args.registry)
+    if args.tag is None: # only count new trials (not seeds)
+        update_experiment_count(usertag, args.registry)
 
     book = load_workbook(args.registry)
     sheet = book['Experiments']

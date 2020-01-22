@@ -46,10 +46,10 @@ def inference(args):
     # define environment
     if args.record:
         env = create_env(args.env_id, client_id='0', remotes=None, envWrap=args.envWrap, designHead=args.designHead,
-                            record=True, noop=args.noop, acRepeat=args.acRepeat, outdir=outdir)
+                            record=True, record_frequency=1, noop=args.noop, acRepeat=args.acRepeat, outdir=outdir)
     else:
         env = create_env(args.env_id, client_id='0', remotes=None, envWrap=args.envWrap, designHead=args.designHead,
-                            record=True, noop=args.noop, acRepeat=args.acRepeat)
+                            record=False, noop=args.noop, acRepeat=args.acRepeat)
     numaction = env.action_space.n
 
     with tf.device("/cpu:0"):
@@ -190,6 +190,7 @@ def inference(args):
         logger.info('Finished %d true episodes.', args.num_episodes)
         if 'distance' in info:
             print('Mario Distances:', mario_distances)
+            print('Mean Distance: {} +/- {}'.format(np.mean(mario_distances), np.std(mario_distances)))
             np.save(outdir + '/distances.npy', mario_distances)
 
     env.close()

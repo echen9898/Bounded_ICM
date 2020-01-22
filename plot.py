@@ -10,7 +10,11 @@ from tensorboard.backend.event_processing import event_accumulator
 
 # ------------------------------------------- DEFAULTS ------------------------------------------- #
 RESULTS_PATH = './curiosity/results/icm'
-SPAN = 150 # smoothing parameter
+SPAN = 150 # smoothing parameter: Mario 500, Doom: 150
+LEFT_X_BOUND = 0
+# RIGHT_X_BOUND = 1800000 # typical Mario
+RIGHT_X_BOUND = 7000000 # for Doom
+
 
 # ------------------------------------------- ARGUMENTS ------------------------------------------- #
 parser = argparse.ArgumentParser(description='Run plotting script')
@@ -48,7 +52,9 @@ def style(args):
     ax = plt.gca()
     sb.set(font='sans')
     plt.xlabel('Training Steps (millions)')
-    plt.ylabel('Extrinsic Reward')
+    y_label = args.y_axis.split('/')[-1]
+    y_label = ' '.join(y_label.split('_')).capitalize()
+    plt.ylabel(y_label)
     ax.set_xticklabels(get_new_labels())
 
 
@@ -59,7 +65,7 @@ def interpolate(df, args):
     '''
 
     # FOLD THIS INTO ARGS
-    x_vals = np.arange(0, 7000000, int(args.x_increment))
+    x_vals = np.arange(LEFT_X_BOUND, RIGHT_X_BOUND, int(args.x_increment))
 
     values = list()
     for x in x_vals:
@@ -94,6 +100,7 @@ def extract_data(usertag, tags, args):
         for event in events:
             ea = event_accumulator.EventAccumulator(event, size_guidance={event_accumulator.SCALARS: 0})
             ea.Reload() # need to call this everytime before loading data
+            # print(ea.Tags()) # check available tags
             try: event_frames.append(pd.DataFrame(ea.Scalars(args.y_axis)))
             except KeyError: continue
         event_frames = sorted(event_frames, key=lambda df: df[args.x_axis][0])
