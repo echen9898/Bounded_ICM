@@ -57,7 +57,7 @@ def run(args, server):
     env = create_env(args.env_id, client_id=str(args.task), remotes=args.remotes, envWrap=args.envWrap, designHead=args.designHead,
                         noLifeReward=args.noLifeReward, record=visualise, record_frequency=args.record_frequency, outdir=args.record_dir)
     
-    trainer = A3C(env, args.task, args.visualise, args.unsup, args.envWrap, args.designHead, args.noReward, args.bonus_bound, args.adv_norm, obs_mean, obs_std, args.rew_norm)
+    trainer = A3C(env, args.task, args.visualise, args.unsup, args.envWrap, args.designHead, args.noReward, args.bonus_bound, args.adv_norm, obs_mean, obs_std, args.rew_norm, args.backup_bound)
 
     # logging
     if args.task == 0:
@@ -98,7 +98,7 @@ def run(args, server):
             pretrain_saver.restore(ses, pretrain)
             logger.info("==> Done restoring model! Restored %d variables.", len(variables_to_restore))
 
-    config = tf.ConfigProto(device_filters=["/job:ps", "/job:worker/task:{}/cpu:0".format(args.task)], log_device_placement=True)
+    config = tf.ConfigProto(device_filters=["/job:ps", "/job:worker/task:{}/cpu:0".format(args.task)])
     logdir = os.path.join(args.log_dir, 'train')
 
     if use_tf12_api:
@@ -190,6 +190,7 @@ Setting up Tensorflow for data parallel work
     parser.add_argument('--adv-norm', action='store_true', help="Normalize batch advantages after each rollout")
     parser.add_argument('--obs-norm', action='store_true', help="Locally tandardize observations (pixelwise, individually by channel)")
     parser.add_argument('--rew-norm', action='store_true', help="Normalize batch rewards by dividing by running standard deviation")
+    parser.add_argument('--backup-bound', default=None, help="Bound the intrinsic reward discounted sum (backup term) before computing network targets")
     args = parser.parse_args()
 
     spec = cluster_spec(args.num_workers, 1, args.psPort)
@@ -204,7 +205,7 @@ Setting up Tensorflow for data parallel work
 
     if args.job_name == "worker":
         server = tf.train.Server(cluster, job_name="worker", task_index=args.task,
-                                 config=tf.ConfigProto(intra_op_parallelism_threads=1, inter_op_parallelism_threads=2, log_device_placement=True))
+                                 config=tf.ConfigProto(intra_op_parallelism_threads=1, inter_op_parallelism_threads=2))
         if args.delay > 0:
             print('Startup delay in worker: {}s'.format(args.delay))
             time.sleep(args.delay)
@@ -212,7 +213,7 @@ Setting up Tensorflow for data parallel work
         run(args, server)
     else:
         server = tf.train.Server(cluster, job_name="ps", task_index=args.task,
-                                 config=tf.ConfigProto(device_filters=["/job:ps"], log_device_placement=True))
+                                 config=tf.ConfigProto(device_filters=["/job:ps"]))
         while True:
             time.sleep(1000)
 

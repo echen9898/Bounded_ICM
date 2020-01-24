@@ -22,10 +22,11 @@ def discount(x, gamma):
     """
     return scipy.signal.lfilter([1], [1, -gamma], x[::-1], axis=0)[::-1]
 
-def process_rollout(rollout, gamma, lambda_=1.0, clip=False, adv_norm=False, r_std_running=False):
+def process_rollout(rollout, gamma, lambda_=1.0, clip=False, adv_norm=False, r_std_running=False, backup_bound=None):
     """
     Given a rollout, compute its returns and the advantage.
     """
+
     # collecting transitions
     if rollout.unsup:
         batch_si = np.asarray(rollout.states + [rollout.end_state])
@@ -44,21 +45,45 @@ def process_rollout(rollout, gamma, lambda_=1.0, clip=False, adv_norm=False, r_s
     # collecting target for value network
     # V_t <-> r_t + gamma*r_{t+1} + ... + gamma^n*r_{t+n} + gamma^{n+1}*V_{n+1}
     rewards_plus_v = np.asarray(list(rewards) + [rollout.r])  # bootstrapping
-    if rollout.unsup:
-        rewards_plus_v += np.asarray(rollout.bonuses + [0])
-    if clip:
+    if rollout.unsup: 
+        # rewards_plus_v += np.asarray(rollout.bonuses + [0])
+        discounted_ri = discount(np.asarray(rollout.bonuses), gamma)
+
+        # bound the intrinsic reward backup term
+        if backup_bound is not None:
+            over_bound_indexes = np.where(discounted_ri>float(backup_bound))[0]
+            if len(over_bound_indexes) > 0:
+                discounted_ri[over_bound_indexes] = 0.0
+
+    if clip: 
         rewards_plus_v[:-1] = np.clip(rewards_plus_v[:-1], -constants['REWARD_CLIP'], constants['REWARD_CLIP'])
-    batch_r = discount(rewards_plus_v, gamma)[:-1]  # value network target
+
+    # batch_r = discount(rewards_plus_v, gamma)[:-1]  # value network target
+    discounted_re = discount(rewards_plus_v, gamma)[:-1]
+    if rollout.unsup and backup_bound is not None: batch_r = discounted_re + discounted_ri # value network target
+    else: batch_r = discounted_re
 
     # collecting target for policy network
-    if rollout.unsup: rewards += np.asarray(rollout.bonuses)
-    if clip: rewards = np.clip(rewards, -constants['REWARD_CLIP'], constants['REWARD_CLIP'])
+    if rollout.unsup: 
+        # rewards += np.asarray(rollout.bonuses)
+        discounted_ri = discount(np.asarray(rollout.bonuses), gamma * lambda_)
+
+        # bound the intrinsic reward backup term
+        if backup_bound is not None:
+            over_bound_indexes = np.where(discounted_ri>float(backup_bound))[0]
+            if len(over_bound_indexes) > 0:
+                discounted_ri[over_bound_indexes] = 0
+
+    if clip: 
+        rewards = np.clip(rewards, - constants['REWARD_CLIP'], constants['REWARD_CLIP'])
     vpred_t = np.asarray(rollout.values + [rollout.r])
     # "Generalized Advantage Estimation": https://arxiv.org/abs/1506.02438
     # Eq (10): delta_t = Rt + gamma*V_{t+1} - V_t
     # Eq (16): batch_adv_t = delta_t + gamma*delta_{t+1} + gamma^2*delta_{t+2} + ...
     delta_t = rewards + gamma * vpred_t[1:] - vpred_t[:-1]
     batch_adv = discount(delta_t, gamma * lambda_)
+
+    if rollout.unsup and backup_bound is not None: batch_adv += discounted_ri
 
     # Normalize batch advantage
     if adv_norm: batch_adv_normed = (batch_adv - np.mean(batch_adv))/(np.std(batch_adv) + 1e-7)
@@ -174,9 +199,9 @@ def env_runner(env, policy, num_local_steps, summary_writer, render, predictor,
     rewards = 0
     values = 0
     if predictor is not None:
-        ep_bonus = 0
         bonuses = list() # ADDED
         life_bonus = 0
+        ep_bonus = 0
 
     while True:
         terminal_end = False
@@ -196,7 +221,7 @@ def env_runner(env, policy, num_local_steps, summary_writer, render, predictor,
                 state = (state-obs_mean)/obs_std
 
             if noReward:
-                reward = 0.
+                reward = 0.0
             if render:
                 env.render()
 
@@ -280,7 +305,7 @@ def env_runner(env, policy, num_local_steps, summary_writer, render, predictor,
 
 class A3C(object):
     def __init__(self, env, task, visualise, unsupType, envWrap=False, designHead='universe', noReward=False, 
-                bonus_bound=None, adv_norm=False, obs_mean=None, obs_std=None, r_std_running=False):
+                bonus_bound=None, adv_norm=False, obs_mean=None, obs_std=None, r_std_running=False, backup_bound=None):
         """
         An implementation of the A3C algorithm that is reasonably well-tuned for the VNC environments.
         Below, we will have a modest amount of complexity due to the way TensorFlow handles data parallelism.
@@ -295,6 +320,7 @@ class A3C(object):
         self.r_std_running = r_std_running
         if self.r_std_running:
             self.r_std_running = RunningMeanStd()
+        self.backup_bound = backup_bound
 
         predictor = None
         numaction = env.action_space.n
@@ -458,7 +484,7 @@ class A3C(object):
         """
         sess.run(self.sync)  # copy weights from shared to local
         rollout = self.pull_batch_from_queue()
-        batch = process_rollout(rollout, gamma=constants['GAMMA'], lambda_=constants['LAMBDA'], clip=self.envWrap, adv_norm=self.adv_norm, r_std_running=self.r_std_running)
+        batch = process_rollout(rollout, gamma=constants['GAMMA'], lambda_=constants['LAMBDA'], clip=self.envWrap, adv_norm=self.adv_norm, r_std_running=self.r_std_running, backup_bound=self.backup_bound)
         should_compute_summary = self.task == 0 and self.local_steps % 11 == 0
         self.r_std_running = batch.r_std_running
 
