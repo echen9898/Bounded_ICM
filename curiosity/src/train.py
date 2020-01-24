@@ -31,7 +31,7 @@ parser.add_argument('--record-frequency', type=int, default=300, help="Interval 
 parser.add_argument('--record-dir', type=str, default='tmp/model/videos', help="Path to directory where training videos should be saved")
 parser.add_argument('--bonus-bound', type=float, default=-1.0, help="Intrinsic reward bound. If reward is above this, it's set to 0")
 parser.add_argument('--adv-norm', action='store_true', help="Normalize batch advantages after each rollout")
-parser.add_argument('--obs-norm', action='store_true', help="Locally tandardize observations (pixelwise, individually by channel)")
+parser.add_argument('--obs-norm', action='store_true', help="Locally standardize observations (pixelwise, individually by channel)")
 parser.add_argument('--rew-norm', action='store_true', help="Normalize batch rewards by dividing by running standard deviation")
 
 def new_cmd(session, name, cmd, mode, logdir, shell):

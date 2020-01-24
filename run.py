@@ -8,6 +8,11 @@ from params_manager import params_object
 from utilities.text_utils import *
 
 # ------------------------------------------- DEFAULTS ------------------------------------------- #
+# paths
+LOG_PATH="./experiment_log.xlsx"
+RESULTS_PATH_DOOM="./curiosity/results/icm/doom"
+RESULTS_PATH_MARIO="./curiosity/results/icm/mario"
+
 
 # default arguments for training operations
 TRAINING_PARAMS = {
@@ -289,9 +294,6 @@ def generate_commands(args):
     # RUN DEMO OP
     elif args.op == 'demo':
 
-        demo_path = '../results/icm'
-        result_path = './curiosity/results/icm'
-
         if not args.tag: # no usertag specified
             print('---- No model tag specified')
             return commands, params, usertag, save
@@ -299,6 +301,13 @@ def generate_commands(args):
         if not os.path.isdir('{}/{}'.format(result_path, args.tag)):
             print('---- Model {} not found'.format(args.tag))
             return commands, params, usertag, save
+
+        # set paths
+        result_path = RESULTS_PATH_DOOM
+        demo_path = '../results/icm/doom'
+        if 'mario' in args.tag.lower():
+            result_path = RESULTS_PATH_MARIO
+            demo_path = '../results/icm/mario'
 
         # find most recent meta file
         nums = list()
@@ -328,9 +337,13 @@ def generate_commands(args):
     # RUN INFERENCE OP
     elif args.op == 'inference':
 
-        inf_path = '../results/icm'
-        result_path = './curiosity/results/icm'
-
+        # set paths
+        result_path = RESULTS_PATH_DOOM
+        inf_path = '../results/icm/doom'
+        if 'mario' in args.tag.lower():
+            result_path = RESULTS_PATH_MARIO
+            inf_path = '../results/icm/mario'
+            
         if not args.tag: # no usertag specified
             print('---- No model tag specified')
             return commands, params, usertag, save
@@ -364,20 +377,27 @@ def generate_commands(args):
     # SWAP TRAINING FILES
     elif args.op == 'swap':
 
+        # set paths
+        result_path = RESULTS_PATH_DOOM # results path
         src_path = './curiosity/src' # source path
-        result_path = './curiosity/results/icm' # results path
-        if os.path.isdir('{}/tmp'.format(src_path)): # tmp is present, ask to store it
+
+        # tmp is present, ask to store it
+        if os.path.isdir('{}/tmp'.format(src_path)):
             if sys.version_info[0] == 2: inp = raw_input('MODEL FILES PRESENT, STORE THEM? -> (Y/N): ')
             elif sys.version_info[0] == 3: inp = input('MODEL FILES PRESENT, STORE THEM? -> (Y/N): ')
             if inp == 'N': 
                 print('---- Exiting with no changes')
             else:
                 with open('{}/tmp/usertag.txt'.format(src_path)) as file: usertag = file.read()
+                if 'mario' in usertag.lower():
+                    result_path = './curiosity/results/icm/mario'
                 print('---- Storing tmp directory in {}/{}'.format(result_path, usertag))
                 commands.append('mv {}/tmp {}/{}'.format(src_path, result_path, usertag))
-        elif not args.tag: # no tmp folder, no usertag
+        # no usertag provided
+        elif not args.tag:
             print('---- No tmp directory detected, and no model tag specified')
-        else: # no tmp folder, target usertag provided
+        # no tmp folder, target usertag provided
+        else:
             if not os.path.isdir('{}/{}'.format(result_path, args.tag)):
                 print('---- Model {} not found'.format(args.tag))
                 return commands, params, usertag, save

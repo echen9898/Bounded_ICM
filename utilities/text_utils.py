@@ -32,9 +32,11 @@ STYLES = {
 }
 
 def wrap_print(text):
-    print('-'*50)
+    print('\n')
+    print('-'*100)
     print(text)
-    print('-'*50)
+    print('-'*100)
+    print('\n')
 
 
 def format(sheet):

@@ -51,10 +51,8 @@ def process_rollout(rollout, gamma, lambda_=1.0, clip=False, adv_norm=False, r_s
     batch_r = discount(rewards_plus_v, gamma)[:-1]  # value network target
 
     # collecting target for policy network
-    if rollout.unsup:
-        rewards += np.asarray(rollout.bonuses)
-    if clip:
-        rewards = np.clip(rewards, -constants['REWARD_CLIP'], constants['REWARD_CLIP'])
+    if rollout.unsup: rewards += np.asarray(rollout.bonuses)
+    if clip: rewards = np.clip(rewards, -constants['REWARD_CLIP'], constants['REWARD_CLIP'])
     vpred_t = np.asarray(rollout.values + [rollout.r])
     # "Generalized Advantage Estimation": https://arxiv.org/abs/1506.02438
     # Eq (10): delta_t = Rt + gamma*V_{t+1} - V_t
@@ -63,15 +61,12 @@ def process_rollout(rollout, gamma, lambda_=1.0, clip=False, adv_norm=False, r_s
     batch_adv = discount(delta_t, gamma * lambda_)
 
     # Normalize batch advantage
-    if adv_norm:
-        batch_adv_normed = (batch_adv - np.mean(batch_adv))/(np.std(batch_adv) + 1e-7)
+    if adv_norm: batch_adv_normed = (batch_adv - np.mean(batch_adv))/(np.std(batch_adv) + 1e-7)
 
     features = rollout.features[0]
 
-    if adv_norm:
-        return Batch(batch_si, batch_a, batch_adv_normed, batch_r, r_std_running, rollout.terminal, features)
-    else:
-        return Batch(batch_si, batch_a, batch_adv, batch_r, r_std_running, rollout.terminal, features)
+    if adv_norm: return Batch(batch_si, batch_a, batch_adv_normed, batch_r, r_std_running, rollout.terminal, features)
+    else: return Batch(batch_si, batch_a, batch_adv, batch_r, r_std_running, rollout.terminal, features)
 
 Batch = namedtuple("Batch", ["si", "a", "adv", "r", "r_std_running", "terminal", "features"])
 

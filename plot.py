@@ -9,11 +9,12 @@ import seaborn as sb
 from tensorboard.backend.event_processing import event_accumulator
 
 # ------------------------------------------- DEFAULTS ------------------------------------------- #
-RESULTS_PATH = './curiosity/results/icm'
-SPAN = 150 # smoothing parameter: Mario 500, Doom: 150
+RESULTS_PATH_DOOM = './curiosity/results/icm/doom'
+RESULTS_PATH_MARIO = './curiosity/results/icm/mario'
+SPAN = 100 # smoothing parameter: Mario 500, Doom: 150
 LEFT_X_BOUND = 0
 # RIGHT_X_BOUND = 1800000 # typical Mario
-RIGHT_X_BOUND = 7000000 # for Doom
+RIGHT_X_BOUND = 15000000 # for Doom
 
 
 # ------------------------------------------- ARGUMENTS ------------------------------------------- #
@@ -71,7 +72,7 @@ def interpolate(df, args):
     for x in x_vals:
         # The following sort of complicated line finds the nearest existing upper/lower bound to x
         # and then averages their values and appends it
-        values.append(df.loc[(df[args.x_axis]-x).abs().argsort()[:2]].mean()['value'])
+        values.append(df.iloc[(df[args.x_axis]-x).abs().argsort()[:2]].mean()['value'])
 
     return pd.DataFrame({'step':list(x_vals), 'value':values})
 
@@ -134,21 +135,25 @@ def extract_data(usertag, tags, args):
 def plot_tags(args):
     ''' Usertags are passed in separated by '+' signs
     '''
-    os.chdir(RESULTS_PATH)
 
     # Setup output directory
-    if not os.path.isdir('./{}'.format(args.output_dir.strip())):
+    if 'mario' in args.output_dir.strip().lower(): mode = 'mario'
+    else: mode = 'doom'
+    if not os.path.isdir('./curiosity/results/icm/{}/{}'.format(mode, args.output_dir.strip())):
         print('---- Output directory {} is invalid'.format(args.output_dir))
         return
 
     if not os.path.isdir('./{}/plots/'.format(args.output_dir)): 
-        os.system('mkdir -p ./{}/plots/'.format(args.output_dir))
+        os.system('mkdir -p ./curiosity/results/icm/{}/{}/plots/'.format(mode, args.output_dir))
 
     # Extract a dataframe for each curve
     tags = args.plot_tags.split('+')
     tags = [t.strip() for t in tags]
     count = 0
     for usertag in tags:
+
+        if 'mario' in usertag.lower(): os.chdir(RESULTS_PATH_MARIO)
+        else: os.chdir(RESULTS_PATH_DOOM)
 
         # If usertag directory doesn't exist
         if not os.path.isdir(usertag):
@@ -167,8 +172,8 @@ def plot_tags(args):
             if count == 0: final_df = df
             else: final_df = pd.concat((final_df, df))
             count += 1
-
-        os.chdir('../'*2)
+        print(os.getcwd())
+        os.chdir('../'*6)
 
     # If averaging over tags, plot them here at the end
     if args.ave_tags in {True, 'True'}:
@@ -185,7 +190,7 @@ def plot_tags(args):
         if args.ave_tags in {True, 'True'}: savename = '{}_averaged_tags.jpg'.format('_'.join([tags[0], args.y_axis.split('/')[-1]]))
         elif args.ave_runs in {True, 'True'}: savename = '{}_averaged_runs.jpg'.format('_'.join([tags[0], args.y_axis.split('/')[-1]]))
         else: savename = '{}.jpg'.format('_'.join([tags[0], args.y_axis.split('/')[-1]]))
-        os.chdir('./{}/plots/'.format(args.output_dir))
+        os.chdir('./curiosity/results/icm/{}/{}/plots/'.format(mode, args.output_dir))
         plot.get_figure().savefig(savename)
     else:
         print('---- Skipping this one: done plotting')
