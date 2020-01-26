@@ -26,7 +26,6 @@ def process_rollout(rollout, gamma, lambda_=1.0, clip=False, adv_norm=False, r_s
     """
     Given a rollout, compute its returns and the advantage.
     """
-
     # collecting transitions
     if rollout.unsup:
         batch_si = np.asarray(rollout.states + [rollout.end_state])
@@ -45,45 +44,21 @@ def process_rollout(rollout, gamma, lambda_=1.0, clip=False, adv_norm=False, r_s
     # collecting target for value network
     # V_t <-> r_t + gamma*r_{t+1} + ... + gamma^n*r_{t+n} + gamma^{n+1}*V_{n+1}
     rewards_plus_v = np.asarray(list(rewards) + [rollout.r])  # bootstrapping
-    if rollout.unsup: 
-        # rewards_plus_v += np.asarray(rollout.bonuses + [0])
-        discounted_ri = discount(np.asarray(rollout.bonuses), gamma)
-
-        # bound the intrinsic reward backup term
-        if backup_bound is not None:
-            over_bound_indexes = np.where(discounted_ri>float(backup_bound))[0]
-            if len(over_bound_indexes) > 0:
-                discounted_ri[over_bound_indexes] = 0.0
-
-    if clip: 
+    if rollout.unsup:
+        rewards_plus_v += np.asarray(rollout.bonuses + [0])
+    if clip:
         rewards_plus_v[:-1] = np.clip(rewards_plus_v[:-1], -constants['REWARD_CLIP'], constants['REWARD_CLIP'])
-
-    # batch_r = discount(rewards_plus_v, gamma)[:-1]  # value network target
-    discounted_re = discount(rewards_plus_v, gamma)[:-1]
-    if rollout.unsup and backup_bound is not None: batch_r = discounted_re + discounted_ri # value network target
-    else: batch_r = discounted_re
+    batch_r = discount(rewards_plus_v, gamma)[:-1]  # value network target
 
     # collecting target for policy network
-    if rollout.unsup: 
-        # rewards += np.asarray(rollout.bonuses)
-        discounted_ri = discount(np.asarray(rollout.bonuses), gamma * lambda_)
-
-        # bound the intrinsic reward backup term
-        if backup_bound is not None:
-            over_bound_indexes = np.where(discounted_ri>float(backup_bound))[0]
-            if len(over_bound_indexes) > 0:
-                discounted_ri[over_bound_indexes] = 0
-
-    if clip: 
-        rewards = np.clip(rewards, - constants['REWARD_CLIP'], constants['REWARD_CLIP'])
+    if rollout.unsup: rewards += np.asarray(rollout.bonuses)
+    if clip: rewards = np.clip(rewards, -constants['REWARD_CLIP'], constants['REWARD_CLIP'])
     vpred_t = np.asarray(rollout.values + [rollout.r])
     # "Generalized Advantage Estimation": https://arxiv.org/abs/1506.02438
     # Eq (10): delta_t = Rt + gamma*V_{t+1} - V_t
     # Eq (16): batch_adv_t = delta_t + gamma*delta_{t+1} + gamma^2*delta_{t+2} + ...
     delta_t = rewards + gamma * vpred_t[1:] - vpred_t[:-1]
     batch_adv = discount(delta_t, gamma * lambda_)
-
-    if rollout.unsup and backup_bound is not None: batch_adv += discounted_ri
 
     # Normalize batch advantage
     if adv_norm: batch_adv_normed = (batch_adv - np.mean(batch_adv))/(np.std(batch_adv) + 1e-7)
