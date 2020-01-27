@@ -61,9 +61,8 @@ def process_rollout(rollout, gamma, lambda_=1.0, clip=False, adv_norm=False, r_s
     delta_t = rewards + gamma * vpred_t[1:] - vpred_t[:-1]
     batch_adv = discount(delta_t, gamma * lambda_)
 
-    # Bound the advantage (line 1 using the value function, line 2 using the intrinsic reward directroy)
-    # if backup_bound is not None: batch_adv[np.where(vpred_t[:-1]>float(backup_bound))] = np.array([0.0])
-    if backup_bound is not None: batch_adv[np.where(rollout.bonuses>float(backup_bound))] = np.array([0.0])
+    # Bound the advantage
+    if backup_bound is not None: batch_adv[np.where(vpred_t[:-1]>float(backup_bound))] = np.array([0.0])
 
     # Normalize batch advantage
     if adv_norm: batch_adv_normed = (batch_adv - np.mean(batch_adv))/(np.std(batch_adv) + 1e-7)
