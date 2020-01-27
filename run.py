@@ -93,7 +93,10 @@ PLOT_PARAMS = {
     'y_axis':'global/episode_reward',
     'ave_runs':True,
     'ave_tags':False,
-    'x_increment':10000
+    'x_increment':10000,
+    'left_x':0,
+    'right_x':10000000,
+    'span':150.0
 }
 
 # arguments with 'action = store_true' in plot.py
@@ -127,7 +130,7 @@ parser.add_argument('-expId', type=int, default=0, help='Experiment Id >=0. Need
 parser.add_argument('-savio', type=bool, default=False, help='Savio or KNL cpu cluster hacks')
 parser.add_argument('-default', type=bool, default=False, help='run with default params')
 parser.add_argument('-pretrain', type=str, default=None, help='Checkpoint dir (generally ..../train/) to load from')
-parser.add_argument('-record-frequency', type=int, default=300, help='Interval (in episode ids) between saved videos')
+parser.add_argument('-record-frequency', type=int, default=300, help='Interval (in episode ids) between saved videos. 300 works well for mario, 50 is better for doom.')
 parser.add_argument('-record-dir', type=str, default='tmp/model/videos', help='Path to directory where training videos should be saved')
 parser.add_argument('-bonus-bound', type=float, default=-1.0, help='Intrinsic reward bound. If reward is above this, its set to 0')
 parser.add_argument('-adv-norm', type=bool, default=False, help='Normalize batch advantages after each rollout')
@@ -172,6 +175,9 @@ parser.add_argument('--y-axis', default='global/episode_reward', help='The scala
 parser.add_argument('--ave-runs', default=True, help='Whether or not each plot tag should plot train_0, or all runs averaged')
 parser.add_argument('--ave-tags', default=False, help='Whether or not specified plot tags should be plotted individually, or averaged')
 parser.add_argument('--x-increment', default=10000, help='Spacing between x-axis values. Only used when averaging runs, or averaging plot tags')
+parser.add_argument('--left-x', default=0, help='Leftmost x-axis value (timestep usually).')
+parser.add_argument('--right-x', default=10000000, help='Rightmost x-axis value (timestep usually).')
+parser.add_argument('--span', type=float, default=150.0, help='Smoothing parameter for EWMA. 150 for Doom, 500 for Mario is safe.')
 
 
 # ------------------------------------------- DATABASE ------------------------------------------- #
@@ -249,7 +255,7 @@ def generate_commands(args):
                         usertag = usertag_file.read().strip()
                     params_hash = get_value(usertag, 'params_id', args.registry)
                     train = TrainingParams()
-                    params = train.find_by_id(params_hash).next()
+                    params = train.find_by_id(params_hash.encode('utf-8')).next()
                     # create training command (directory changes before this is run)
                     commands.append('{} train.py {}'.format(py_cmd, dict_to_command(params, STORE_TRUE_TRAIN, TRAINING_PARAMS, args.op)))
                     print('---- Restarting existing training session: {}'.format(usertag))
