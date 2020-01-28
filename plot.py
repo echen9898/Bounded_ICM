@@ -64,7 +64,7 @@ def interpolate(df, args):
     '''
 
     # FOLD THIS INTO ARGS
-    x_vals = np.arange(args.left_x, args.right_x, int(args.x_increment))
+    x_vals = np.arange(int(args.left_x), int(args.right_x), int(args.x_increment))
 
     values = list()
     for x in x_vals:
@@ -101,7 +101,7 @@ def extract_data(usertag, tags, args):
         for event in events:
             ea = event_accumulator.EventAccumulator(event, size_guidance={event_accumulator.SCALARS: 0})
             ea.Reload() # need to call this everytime before loading data
-            # print(ea.Tags()) # check available tags
+            print(ea.Tags()) # check available tags
             try: event_frames.append(pd.DataFrame(ea.Scalars(args.y_axis)))
             except KeyError: continue
         event_frames = sorted(event_frames, key=lambda df: df[args.x_axis][0])
@@ -172,7 +172,6 @@ def plot_tags(args):
             if count == 0: final_df = df
             else: final_df = pd.concat((final_df, df))
             count += 1
-        print(os.getcwd())
         os.chdir('../'*6)
 
     # If averaging over tags, plot them here at the end

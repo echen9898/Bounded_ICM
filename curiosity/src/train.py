@@ -33,7 +33,7 @@ parser.add_argument('--bonus-bound', type=float, default=-1.0, help="Intrinsic r
 parser.add_argument('--adv-norm', action='store_true', help="Normalize batch advantages after each rollout")
 parser.add_argument('--obs-norm', action='store_true', help="Locally standardize observations (pixelwise, individually by channel)")
 parser.add_argument('--rew-norm', action='store_true', help="Normalize batch rewards by dividing by running standard deviation")
-parser.add_argument('--backup-bound', default=None, help="Bound the intrinsic reward discounted sum (backup term) before computing network targets")
+parser.add_argument('--backup-bound', type=float, default=-1.0, help="Bound the intrinsic reward discounted sum (backup term) before computing network targets")
 
 def new_cmd(session, name, cmd, mode, logdir, shell):
     if isinstance(cmd, (list, tuple)):

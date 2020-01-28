@@ -39,7 +39,7 @@ TRAINING_PARAMS = {
     'adv_norm':False,
     'obs_norm':False,
     'rew_norm':False,
-    'backup_bound':None
+    'backup_bound':-1.0
 }
 
 # arguments with 'action = store_true' in train.py
@@ -136,7 +136,7 @@ parser.add_argument('-bonus-bound', type=float, default=-1.0, help='Intrinsic re
 parser.add_argument('-adv-norm', type=bool, default=False, help='Normalize batch advantages after each rollout')
 parser.add_argument('-obs-norm', type=bool, default=False, help='Locally tandardize observations (pixelwise, individually by channel)')
 parser.add_argument('-rew-norm', type=bool, default=False, help='Normalize batch rewards by dividing by running standard deviation')
-parser.add_argument('-backup-bound', default=None, help="Bound the intrinsic reward discounted sum (backup term) before computing network targets")
+parser.add_argument('-backup-bound', type=float, default=-1.0, help="Bound the intrinsic reward discounted sum (backup term) before computing network targets")
 
 # DEMO OP ARGUMENTS
 # parser.add_argument('--ckpt', default='../models/doom/doom_ICM', help='Checkpoint name')

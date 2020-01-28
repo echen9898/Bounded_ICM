@@ -190,7 +190,7 @@ Setting up Tensorflow for data parallel work
     parser.add_argument('--adv-norm', action='store_true', help="Normalize batch advantages after each rollout")
     parser.add_argument('--obs-norm', action='store_true', help="Locally tandardize observations (pixelwise, individually by channel)")
     parser.add_argument('--rew-norm', action='store_true', help="Normalize batch rewards by dividing by running standard deviation")
-    parser.add_argument('--backup-bound', default=None, help="Bound the intrinsic reward discounted sum (backup term) before computing network targets")
+    parser.add_argument('--backup-bound', type=float, default=-1.0, help="Bound the intrinsic reward discounted sum (backup term) before computing network targets")
     args = parser.parse_args()
 
     spec = cluster_spec(args.num_workers, 1, args.psPort)
