@@ -22,9 +22,9 @@ parser.add_argument('--x-axis', default='step', help='The x axis value')
 parser.add_argument('--y-axis', default='global/episode_reward', help='The scalar value being plotted')
 parser.add_argument('--ave-runs', default=True, help='Whether or not each plot tag should plot train_0, or all runs averaged')
 parser.add_argument('--ave-tags', default=False, help='Whether or not specified plot tags should be plotted individually, or averaged')
-parser.add_argument('--x-increment', default=10000, help='Spacing between x-axis values. Only used when averaging multiple curves.')
-parser.add_argument('--left-x', default=0, help='Leftmost x-axis value (timestep usually).')
-parser.add_argument('--right-x', default=10000000, help='Rightmost x-axis value (timestep usually).')
+parser.add_argument('--x-increment', type=int, default=10000, help='Spacing between x-axis values. Only used when averaging multiple curves.')
+parser.add_argument('--left-x', type=int, default=0, help='Leftmost x-axis value (timestep usually).')
+parser.add_argument('--right-x', type=int, default=10000000, help='Rightmost x-axis value (timestep usually).')
 parser.add_argument('--span', type=float, default=150.0, help='Smoothing parameter for EWMA. 150 for Doom, 500 for Mario is safe.')
 
 # ------------------------------------------- STYLING ------------------------------------------- #
@@ -64,7 +64,7 @@ def interpolate(df, args):
     '''
 
     # FOLD THIS INTO ARGS
-    x_vals = np.arange(int(args.left_x), int(args.right_x), int(args.x_increment))
+    x_vals = np.arange(args.left_x, args.right_x, args.x_increment)
 
     values = list()
     for x in x_vals:
