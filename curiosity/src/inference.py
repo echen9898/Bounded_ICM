@@ -218,7 +218,7 @@ def main(_):
         args.envWrap = True
         args.acRepeat = 1
     if args.acRepeat <= 0:
-        print('Using default action repeat (i.e. 4). Min value that can be set is 1.')
+        print('Using default action repeat (i.e. 4 for Doom, 6 for Mario). Min value that can be set is 1.')
     inference(args)
 
 if __name__ == "__main__":

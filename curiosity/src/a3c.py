@@ -54,19 +54,19 @@ def process_rollout(rollout, gamma, lambda_=1.0, clip=False, adv_norm=False, r_s
     if rollout.unsup: rewards += np.asarray(rollout.bonuses)
     if clip: rewards = np.clip(rewards, -constants['REWARD_CLIP'], constants['REWARD_CLIP'])
     vpred_t = np.asarray(rollout.values + [rollout.r])
-    print('VPRED: ', vpred_t)
+    # print('VPRED: ', vpred_t)
 
     # "Generalized Advantage Estimation": https://arxiv.org/abs/1506.02438
     # Eq (10): delta_t = Rt + gamma*V_{t+1} - V_t
     # Eq (16): batch_adv_t = delta_t + (gamma*lambda)delta_{t+1} + (gamma*lambda)^2*delta_{t+2} + ...
     delta_t = rewards + gamma * vpred_t[1:] - vpred_t[:-1]
     batch_adv = discount(delta_t, gamma * lambda_)
-    print('ADV: ', batch_adv)
+    # print('ADV: ', batch_adv)
 
     # Bound the advantage
     if backup_bound != -1.0:
         batch_adv[np.where(vpred_t[:-1]>float(backup_bound))] = np.array([0.0])
-        print('BOUNDED_ADV: ', batch_adv)
+        # print('BOUNDED_ADV: ', batch_adv)
 
     # Normalize batch advantage
     if adv_norm: batch_adv_normed = (batch_adv - np.mean(batch_adv))/(np.std(batch_adv) + 1e-7)
