@@ -54,29 +54,26 @@ def process_rollout(rollout, gamma, lambda_=1.0, clip=False, adv_norm=False, r_s
     if rollout.unsup: rewards += np.asarray(rollout.bonuses)
     if clip: rewards = np.clip(rewards, -constants['REWARD_CLIP'], constants['REWARD_CLIP'])
     vpred_t = np.asarray(rollout.values + [rollout.r])
-    # print('VPRED: ', vpred_t)
 
     # "Generalized Advantage Estimation": https://arxiv.org/abs/1506.02438
     # Eq (10): delta_t = Rt + gamma*V_{t+1} - V_t
     # Eq (16): batch_adv_t = delta_t + (gamma*lambda)delta_{t+1} + (gamma*lambda)^2*delta_{t+2} + ...
     delta_t = rewards + gamma * vpred_t[1:] - vpred_t[:-1]
     batch_adv = discount(delta_t, gamma * lambda_)
-    # print('ADV: ', batch_adv)
 
     # Bound the advantage
     if backup_bound != -1.0:
         batch_adv[np.where(vpred_t[:-1]>float(backup_bound))] = np.array([0.0])
-        # print('BOUNDED_ADV: ', batch_adv)
 
     # Normalize batch advantage
     if adv_norm: batch_adv_normed = (batch_adv - np.mean(batch_adv))/(np.std(batch_adv) + 1e-7)
 
     features = rollout.features[0]
 
-    if adv_norm: return Batch(batch_si, batch_a, batch_adv_normed, batch_r, r_std_running, rollout.terminal, features)
-    else: return Batch(batch_si, batch_a, batch_adv, batch_r, r_std_running, rollout.terminal, features)
+    if adv_norm: return Batch(batch_si, batch_a, batch_adv_normed, batch_r, r_std_running, rollout.terminal, features, vpred_t[:-1])
+    else: return Batch(batch_si, batch_a, batch_adv, batch_r, r_std_running, rollout.terminal, features, vpred_t[:-1])
 
-Batch = namedtuple("Batch", ["si", "a", "adv", "r", "r_std_running", "terminal", "features"])
+Batch = namedtuple("Batch", ["si", "a", "adv", "r", "r_std_running", "terminal", "features", "vpreds"])
 
 class PartialRollout(object):
     """
@@ -213,7 +210,7 @@ def env_runner(env, policy, num_local_steps, summary_writer, render, predictor,
                 bonus = predictor.pred_bonus(last_state, state, action)
 
                 if bonus_bound > 0 and bonus > bonus_bound:
-                    bonus = 0.0 # intrinsic reward bounding -------------------------------------------------------------------------------------------------------------
+                    bonus = 0.0
 
                 bonuses.append(bonus)
                 curr_tuple += [bonus, state]
@@ -295,6 +292,7 @@ class A3C(object):
         should be computed.
         """
         self.task = task
+        self.local_steps = 0
         self.unsup = unsupType is not None
         self.envWrap = envWrap
         self.env = env
@@ -303,6 +301,7 @@ class A3C(object):
         if self.r_std_running:
             self.r_std_running = RunningMeanStd()
         self.backup_bound = backup_bound
+        self.vpreds = tf.placeholder(tf.float32, [None], name="vpreds") # placeholder for V predictions passed in through feed dict
 
         predictor = None
         numaction = env.action_space.n
@@ -378,6 +377,8 @@ class A3C(object):
                 tf.summary.image("model/state", pi.x)  # max_outputs=10
                 tf.summary.scalar("model/grad_global_norm", tf.global_norm(grads))
                 tf.summary.scalar("model/var_global_norm", tf.global_norm(pi.var_list))
+                tf.summary.scalar("model/vpreds", tf.reduce_mean(self.vpreds))
+                tf.summary.scalar("model/advantages", tf.reduce_mean(self.adv))
                 if self.unsup:
                     tf.summary.scalar("model/predloss", self.predloss)
                     if 'action' in unsupType:
@@ -385,6 +386,9 @@ class A3C(object):
                         tf.summary.scalar("model/forward_loss", predictor.forwardloss)
                     tf.summary.scalar("model/predgrad_global_norm", tf.global_norm(predgrads))
                     tf.summary.scalar("model/predvar_global_norm", tf.global_norm(predictor.var_list))
+                # if self.task == 0 and self.local_steps % 25800 == 0:
+                #     tf.summary.histogram('global/vpreds', self.vpreds)
+                #     tf.summary.histogram('global/advantages', self.adv)
                 self.summary_op = tf.summary.merge_all()
             else:
                 tf.scalar_summary("model/policy_loss", pi_loss)
@@ -393,6 +397,8 @@ class A3C(object):
                 tf.image_summary("model/state", pi.x)
                 tf.scalar_summary("model/grad_global_norm", tf.global_norm(grads))
                 tf.scalar_summary("model/var_global_norm", tf.global_norm(pi.var_list))
+                tf.scalar_summary("model/vpreds", tf.reduce_mean(self.vpreds))
+                tf.scalar_summary("model/advantages", tf.reduce_mean(self.adv))
                 if self.unsup:
                     tf.scalar_summary("model/predloss", self.predloss)
                     if 'action' in unsupType:
@@ -400,6 +406,9 @@ class A3C(object):
                         tf.scalar_summary("model/forward_loss", predictor.forwardloss)
                     tf.scalar_summary("model/predgrad_global_norm", tf.global_norm(predgrads))
                     tf.scalar_summary("model/predvar_global_norm", tf.global_norm(predictor.var_list))
+                # if self.task == 0 and self.local_steps % 25800 == 0:
+                #     tf.histogram_summary('global/vpreds', self.vpreds)
+                #     tf.histogram_summary('global/advantages', self.adv)
                 self.summary_op = tf.merge_all_summaries()
 
             # clip gradients
@@ -428,7 +437,6 @@ class A3C(object):
 
             # initialize extras
             self.summary_writer = None
-            self.local_steps = 0
 
     def start(self, sess, summary_writer):
         self.runner.start_runner(sess, summary_writer)
@@ -482,6 +490,7 @@ class A3C(object):
             self.r: batch.r,
             self.local_network.state_in[0]: batch.features[0],
             self.local_network.state_in[1]: batch.features[1],
+            self.vpreds: batch.vpreds
         }
         if self.unsup:
             feed_dict[self.local_network.x] = batch.si[:-1]
