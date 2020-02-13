@@ -82,3 +82,42 @@ register(
     entry_point='vizdoomgym.envs:VizdoomHealthGatheringSupreme',
     max_episode_steps=10000,
 )
+
+register(
+    id='LabyrinthSingle-v0',
+    entry_point='vizdoomgym.envs:VizdoomLabyrinthSingle',
+    max_episode_steps=2099,
+    reward_threshold=0.5
+)
+
+register(
+    id='LabyrinthMany-v0',
+    entry_point='vizdoomgym.envs:VizdoomLabyrinthMany',
+    max_episode_steps=2099,
+    reward_threshold=0.5
+)
+
+register(
+    id='LabyrinthManyFixed-v0',
+    entry_point='vizdoomgym.envs:VizdoomLabyrinthManyFixed',
+    max_episode_steps=2099,
+    reward_threshold=0.5
+)
+
+register(
+    id='LabyrinthRandTx-v0',
+    entry_point='vizdoomgym.envs:VizdoomLabyrinthRandTx',
+    max_episode_steps=2099,
+    reward_threshold=0.5
+)
+
+
+
+
+
+
+
+
+
+
+

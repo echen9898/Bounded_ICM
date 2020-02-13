@@ -37,17 +37,15 @@ def create_doom(env_id, client_id, envWrap=True, record=False, outdir=None,
                     noLifeReward=False, acRepeat=0, record_frequency=None, **_):
     import vizdoomgym
 
-    if 'very' in env_id.lower():
+    if 'labyrinth' in env_id.lower():
+        if 'many' in env_id.lower():
+            env_id = 'LabyrinthMany-v0'
+        else:
+            env_id = 'LabyrinthRandTx-v0'
+    elif 'very' in env_id.lower():
         env_id = 'VizdoomMyWayHomeFixed15-v0'
     elif 'sparse' in env_id.lower():
         env_id = 'VizdoomMyWayHomeFixed-v0'
-    elif 'fix' in env_id.lower():
-        if '1' in env_id or '2' in env_id:
-            env_id = 'VizdoomMyWayHomeFixed' + str(env_id[-2:]) + '-v0'
-        elif 'new' in env_id.lower():
-            env_id = 'ppaquette/DoomMyWayHomeFixedNew-v0'
-        else:
-            env_id = 'VizdoomMyWayHomeFixed-v0'
     else:
         env_id = 'VizdoomMyWayHome-v0'
 

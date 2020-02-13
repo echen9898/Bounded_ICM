@@ -5,18 +5,23 @@ from vizdoom import *
 import numpy as np
 
 # Format (config, scenario, num_actions, difficulty)
-CONFIGS = [['basic.cfg', 'basic.wad', 3, 5],                            # 0
-           ['deadly_corridor.cfg', 'deadly_corridor.wad', 6, 1],        # 1
-           ['defend_the_center.cfg', 'defend_the_center.wad', 3, 5],    # 2
-           ['defend_the_line.cfg', 'defend_the_line.wad', 3, 5],        # 3
-           ['health_gathering.cfg', 'health_gathering.wad', 3, 5],      # 4
-           ['my_way_home.cfg', 'my_way_home_dense.wad', 3, 5],          # 5
-           ['predict_position.cfg', 'predict_position.wad', 3, 3],      # 6
-           ['take_cover.cfg', 'take_cover.wad', 2, 5],                  # 7
-           ['deathmatch.cfg', 'deathmatch.wad', 42, 5],                 # 8
-           ['my_way_home.cfg', 'my_way_home_sparse.wad', 3, 5],         # 9
-           ['my_way_home.cfg', 'my_way_home_verysparse.wad', 3, 5],     # 10
-           ['health_gathering_supreme.cfg', 3, 5]]                      # 11
+CONFIGS = [['basic.cfg', 'basic.wad', 3, 5],                                       # 0
+           ['deadly_corridor.cfg', 'deadly_corridor.wad', 6, 1],                   # 1
+           ['defend_the_center.cfg', 'defend_the_center.wad', 3, 5],               # 2
+           ['defend_the_line.cfg', 'defend_the_line.wad', 3, 5],                   # 3
+           ['health_gathering.cfg', 'health_gathering.wad', 3, 5],                 # 4
+           ['my_way_home.cfg', 'my_way_home_dense.wad', 3, 5],                     # 5
+           ['predict_position.cfg', 'predict_position.wad', 3, 3],                 # 6
+           ['take_cover.cfg', 'take_cover.wad', 2, 5],                             # 7
+           ['deathmatch.cfg', 'deathmatch.wad', 42, 5],                            # 8
+           ['my_way_home.cfg', 'my_way_home_sparse.wad', 3, 5],                    # 9
+           ['my_way_home.cfg', 'my_way_home_verysparse.wad', 3, 5],                # 10
+           ['health_gathering_supreme.cfg', 'health_gathering_supreme.wad', 3, 5], # 11
+           ['labyrinth.cfg', 'labyrinth_single.wad', 3, 5],                        # 12
+           ['labyrinth.cfg', 'labyrinth_many_fixed.wad', 3, 5],                    # 13
+           ['labyrinth.cfg', 'labyrinth_many.wad', 3, 5],                          # 14
+           ['labyrinth.cfg', 'labyrinth_randtx.wad', 3, 5]]                        # 15
+
 
 # Maps actions from deprecated ppaquette package to new vizdoom environment
 my_way_home_map = {13:[1, 0, 0, 0], 14:[0, 1, 0, 0], 15:[0, 0, 1, 0], 'noop':[0, 0, 0, 1]} 

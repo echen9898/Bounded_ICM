@@ -210,7 +210,7 @@ class ExperimentParams(ParameterObject):
 
     def default_params(self):
         dParams = dict()
-        dParams['params_hash'] = self._training_params.hash_name()
+        dParams['params_hash'] = self._training_params.hash_name() 
         return dParams
 
     def get_paths(self):

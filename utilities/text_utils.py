@@ -17,7 +17,7 @@ COLS = {
 
 # row indexes of interest
 ROWS = {
-    'header':14
+    'header':17
 }
 
 # dictionary of custom styles
@@ -123,7 +123,8 @@ def create_usertag(args):
 
     # Reward setting (dense, sparse, verySparse)
     if 'doom' in args.env_id.lower():
-        if 'very' in args.env_id.lower(): setting='verySparse'
+        if 'labyrinth' in args.env_id.lower(): setting='labyrinth'
+        elif 'very' in args.env_id.lower(): setting='verySparse'
         elif 'sparse' in args.env_id.lower(): setting='sparse'
         else: setting='dense'
     elif 'mario' in args.env_id.lower():

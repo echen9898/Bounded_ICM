@@ -17,6 +17,11 @@ ALLOWED_ACTIONS = [
     [x for x in range(NUM_ACTIONS) if x != 33], # 8 - Deathmatch
     [13, 14, 15],                               # 9 - MyWayHomeFixed
     [13, 14, 15],                               # 10 - MyWayHomeFixed15
+    [13, 14, 15],                               # 11 - HealthGatheringSupreme
+    [13, 14, 15],                               # 12 - LabyrinthSingle
+    [13, 14, 15],                               # 13 - LabyrinthManyFixed
+    [13, 14, 15],                               # 14 - LabyrinthMany
+    [13, 14, 15]                                # 15 - LabyrinthRandTx
 ]
 
 __all__ = [ 'ToDiscrete', 'ToBox' ]
