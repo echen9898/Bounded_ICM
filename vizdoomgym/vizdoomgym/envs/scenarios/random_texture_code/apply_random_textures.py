@@ -22,11 +22,12 @@ def change_textures(in_map, textures_file):
     else:
         mode = 'all_the_same'   
     
+    mode = 'all_rand'
     print(mode)
         
     map_editor = omg.MapEditor(in_map)
     
-    apply_to_mid = True  # this has to be False for lab22
+    apply_to_mid = True # this has to be False for lab22
     if mode == 'all_rand':
         for s in map_editor.sidedefs:
             s.tx_up = random.choice(textures)
@@ -36,6 +37,8 @@ def change_textures(in_map, textures_file):
         for s in map_editor.sectors:
             s.tx_floor = random.choice(textures)
             s.tx_ceil = random.choice(textures)
+            print('floor: ', s.tx_floor)
+            print('ceil: ', s.tx_ceil)
     elif mode == 'walls_ceil_floor':
         wall_tx = random.choice(textures)
         floor_tx = random.choice(textures)
@@ -97,7 +100,9 @@ if __name__ == '__main__':
     wad = omg.WAD(in_file) 
 
     for (nm,texturef) in enumerate(texture_files):
+        print('MAP%.2d' % (nm+2))
         wad.maps['MAP%.2d' % (nm+2)] = change_textures(wad.maps['MAP01'], texturef)
+        print('-'*50)
 
     wad.to_file(out_file)
 
