@@ -345,16 +345,16 @@ def generate_commands(args):
     # RUN INFERENCE OP
     elif args.op == 'inference':
 
+        if not args.tag: # no usertag specified
+            print('---- No model tag specified')
+            return commands, params, usertag, save
+
         # set paths
         result_path = RESULTS_PATH_DOOM
         inf_path = '../results/icm/doom'
         if 'mario' in args.tag.lower():
             result_path = RESULTS_PATH_MARIO
             inf_path = '../results/icm/mario'
-
-        if not args.tag: # no usertag specified
-            print('---- No model tag specified')
-            return commands, params, usertag, save
 
         if not os.path.isdir('{}/{}'.format(result_path, args.tag)):
             print('---- Model {} not found'.format(args.tag))
