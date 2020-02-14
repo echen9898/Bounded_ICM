@@ -3,6 +3,7 @@ import sys
 import random
 import os
 
+
 def change_textures(in_map, textures_file):
     with open(textures_file) as f:
         textures = f.read().split()
@@ -21,7 +22,7 @@ def change_textures(in_map, textures_file):
         mode = 'walls_ceil_floor'
     else:
         mode = 'all_the_same'   
-    
+
     mode = 'all_rand'
     print(mode)
         
