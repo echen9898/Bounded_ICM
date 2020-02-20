@@ -340,12 +340,15 @@ class A3C(object):
             # notice that self.ac is a placeholder that is provided externally.
             # adv will contain the advantages, as calculated in process_rollout
             pi_loss = - tf.reduce_mean(tf.reduce_sum(log_prob_tf * self.ac, 1) * self.adv)  # Eq (19)
+            pi_loss = tf.Print(pi_loss, [pi_loss], message='LP: ')
             # 2) loss of value function: l2_loss = (x-y)^2/2
             vf_loss = 0.5 * tf.reduce_mean(tf.square(pi.vf - self.r))  # Eq (28)
+            vf_loss = tf.Print(vf_loss, [vf_loss], message='LV: ')
             # 3) entropy to ensure randomness
-            entropy = - tf.reduce_mean(tf.reduce_sum(prob_tf * log_prob_tf, 1))
+            entropy = - tf.reduce_mean(tf.reduce_sum(prob_tf * log_prob_tf, 1)) * constants['ENTROPY_BETA']
+            entropy = tf.Print(entropy, [entropy], message='Entropy: ')
             # final a3c loss: lr of critic is half of actor
-            self.loss = pi_loss + 0.5 * vf_loss - entropy * constants['ENTROPY_BETA']
+            self.loss = pi_loss + 0.5 * vf_loss - entropy
 
             # compute gradients
             grads = tf.gradients(self.loss * 20.0, pi.var_list)  # batchsize=20. Factored out to make hyperparams not depend on it.

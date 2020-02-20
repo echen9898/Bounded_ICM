@@ -94,8 +94,13 @@ def inference(args):
 
             # ---------------------------------------------------------------------------------------------------------------------------------------------------------
             if args.demo:
-                saver = tf.train.import_meta_graph('../results/mario/mario_ICM.meta', clear_devices=True)
-                saver.restore(sess, '../results/mario/mario_ICM')
+                if 'mario' in args.env_id.lower(): graph_path = '../results/mario/mario_ICM.meta'
+                elif 'very' in args.env_id.lower(): graph_path = '../results/doom/doomVerySparse_ICM.meta'
+                elif 'sparse' in args.env_id.lower(): graph_path = '../results/doom/doomSparse_ICM.meta'
+                else: graph_path = '../results/doom/doom_ICM.meta'
+                print('USING DEMO MODEL: {}'.format(graph_path))
+                saver = tf.train.import_meta_graph(graph_path, clear_devices=True)
+                saver.restore(sess, graph_path[:-5])
             else:
                 saver.restore(sess, ckpt)
             # ---------------------------------------------------------------------------------------------------------------------------------------------------------
