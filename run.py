@@ -121,7 +121,7 @@ parser.add_argument('-dry-run', type=bool, default=False, help='Print out comman
 parser.add_argument('-mode', type=str, default='tmux', help='tmux: run workers in a tmux session. nohup: run workers with nohup. child: run workers as child processes')
 parser.add_argument('-visualise', type=bool, default=True, help='Visualise the gym environment by running env.render() between each timestep')
 parser.add_argument('-envWrap', type=bool, default=True, help='Preprocess input in env_wrapper (no change in input size or network)')
-parser.add_argument('-designHead', type=str, default='universe', help='Network deign head: nips or nature or doom or universe(default)')
+parser.add_argument('-designHead', type=str, default='universe', help='Network design head: nips or nature or doom or universe (default)')
 parser.add_argument('-unsup', type=str, default=None, help='Unsup. exploration mode: action or state or stateAenc or None')
 parser.add_argument('-noReward', type=bool, default=False, help='Remove all extrinsic reward')
 parser.add_argument('-noLifeReward', type=bool, default=True, help='Remove all negative reward (in doom: it is living reward)')
