@@ -231,10 +231,10 @@ def generate_commands(args):
     save = False # whether or not to ask about saving parameters and updating experiment log
 
     if args.op == None: 
-        print('---- No operation specified: use the -op flag')
+        wrap_print('---- No operation specified: use the -op flag')
 
     elif args.op not in {'train', 'swap', 'demo', 'inference', 'plot', 'wr'}:
-        print('---- Operation not available (mispelled?)')
+        wrap_print('---- Operation not available (mispelled?)')
         
     # RUN TRAINING OP
     elif args.op == 'train':
@@ -245,10 +245,10 @@ def generate_commands(args):
             if user_inp != 'Y': 
                 user_inp = raw_input('REMOVE TMP FOLDER? -> (Y/N): ')
                 if user_inp != 'Y':
-                    print('---- Exiting with no changes')
+                    wrap_print('---- Exiting with no changes')
                 elif user_inp == 'Y':
                     os.system('rm -r ./curiosity/src/tmp')
-                    print('---- Removed. Exiting.')
+                    wrap_print('---- Removed tmp folder. Exiting.')
             elif user_inp == 'Y':
                 if os.path.exists('./curiosity/src/tmp/usertag.txt'):
                     with open('./curiosity/src/tmp/usertag.txt', 'r') as usertag_file: 
@@ -258,16 +258,16 @@ def generate_commands(args):
                     params = train.find_by_id(params_hash.encode('utf-8')).next()
                     # create training command (directory changes before this is run)
                     commands.append('{} train.py {}'.format(py_cmd, dict_to_command(params, STORE_TRUE_TRAIN, TRAINING_PARAMS, args.op)))
-                    print('---- Restarting existing training session: {}'.format(usertag))
+                    wrap_print('---- Restarting existing training session: {}'.format(usertag))
                 else:
-                    print('---- No usertag.txt file in current tmp directory')
+                    wrap_print('---- No usertag.txt file in current tmp directory')
 
         elif args.tag: # new model with old model parameters specified
 
             # check if the requested old model exists in the log
             sourcetag = args.tag
             if get_value(sourcetag, 'usertag', args.registry) is None:
-                print('---- Model {} does not exist in experiment log'.format(sourcetag))
+                wrap_print('---- Model {} does not exist in experiment log'.format(sourcetag))
                 return commands, params, sourcetag, save
 
             # create a new usertag for this seed and retrieve parameters from database
@@ -279,9 +279,9 @@ def generate_commands(args):
             if params:
                 save = True
                 commands.append('{} train.py {}'.format(py_cmd, dict_to_command(params, STORE_TRUE_TRAIN, TRAINING_PARAMS, args.op)))
-                print('---- Starting a new training session {} with same parameters as {}'.format(usertag, sourcetag))
+                wrap_print('---- Starting a new training session {} with same parameters as {}'.format(usertag, sourcetag))
             else:
-                print('---- Couldnt find appropriate hash in experiment log')
+                wrap_print('---- Couldnt find appropriate hash in experiment log')
 
         else: # new model with new parameters
             save = True
@@ -296,18 +296,22 @@ def generate_commands(args):
             # create training command
             cmd = '{} train.py {}'.format(py_cmd, dict_to_command(params, STORE_TRUE_TRAIN, TRAINING_PARAMS, args.op)) # directory changes before this is run
             commands.append(cmd)
-            print('---- Starting a new training session with new parameters: {}'.format(usertag))
+            if args.pretrain:
+                sourcetag = args.pretrain.split('/')[-3]
+                wrap_print('---- Starting {} on {} with {} head architecture'.format(usertag, params['env_id'], params['designHead']))
+            else:
+                wrap_print('---- Starting a new training session with new parameters: {}'.format(usertag))
 
 
     # RUN DEMO OP
     elif args.op == 'demo':
 
         if not args.tag: # no usertag specified
-            print('---- No model tag specified')
+            wrap_print('---- No model tag specified')
             return commands, params, usertag, save
 
         if not os.path.isdir('{}/{}'.format(result_path, args.tag)):
-            print('---- Model {} not found'.format(args.tag))
+            wrap_print('---- Model {} not found'.format(args.tag))
             return commands, params, usertag, save
 
         # set paths
@@ -340,13 +344,13 @@ def generate_commands(args):
         # generate demo command
         cmd = '{} demo.py {}'.format(py_cmd, dict_to_command(params, STORE_TRUE_DEMO, DEMO_PARAMS, args.op)) 
         commands.append(cmd)
-        print('---- Starting demo with model {} on env {}'.format(args.tag, params['env_id']))
+        wrap_print('---- Starting demo with model {} on env {}'.format(args.tag, params['env_id']))
 
     # RUN INFERENCE OP
     elif args.op == 'inference':
 
         if not args.tag: # no usertag specified
-            print('---- No model tag specified')
+            wrap_print('---- No model tag specified')
             return commands, params, usertag, save
 
         # set paths
@@ -357,7 +361,7 @@ def generate_commands(args):
             inf_path = '../results/icm/mario'
 
         if not os.path.isdir('{}/{}'.format(result_path, args.tag)):
-            print('---- Model {} not found'.format(args.tag))
+            wrap_print('---- Model {} not found'.format(args.tag))
             return commands, params, usertag, save
 
         # find most recent meta file
@@ -380,7 +384,7 @@ def generate_commands(args):
         # generate infernece command
         cmd = '{} inference.py {}'.format(py_cmd, dict_to_command(params, STORE_TRUE_INF, INF_PARAMS, args.op))
         commands.append(cmd)
-        print('---- Starting demo with model {} on env {}'.format(args.tag, params['env_id']))
+        wrap_print('---- Starting demo with model {} on env {}'.format(args.tag, params['env_id']))
 
     # SWAP TRAINING FILES
     elif args.op == 'swap':
@@ -394,20 +398,20 @@ def generate_commands(args):
             if sys.version_info[0] == 2: inp = raw_input('MODEL FILES PRESENT, STORE THEM? -> (Y/N): ')
             elif sys.version_info[0] == 3: inp = input('MODEL FILES PRESENT, STORE THEM? -> (Y/N): ')
             if inp == 'N': 
-                print('---- Exiting with no changes')
+                wrap_print('---- Exiting with no changes')
             else:
                 with open('{}/tmp/usertag.txt'.format(src_path)) as file: usertag = file.read()
                 if 'mario' in usertag.lower():
                     result_path = './curiosity/results/icm/mario'
-                print('---- Storing tmp directory in {}/{}'.format(result_path, usertag))
+                wrap_print('---- Storing tmp directory in {}/{}'.format(result_path, usertag))
                 commands.append('mv {}/tmp {}/{}'.format(src_path, result_path, usertag))
         # no usertag provided
         elif not args.tag:
-            print('---- No tmp directory detected, and no model tag specified')
+            wrap_print('---- No tmp directory detected, and no model tag specified')
         # no tmp folder, target usertag provided
         else:
             if not os.path.isdir('{}/{}'.format(result_path, args.tag)):
-                print('---- Model {} not found'.format(args.tag))
+                wrap_print('---- Model {} not found'.format(args.tag))
                 return commands, params, usertag, save
             commands.append('mv {}/{} {}/'.format(result_path, args.tag, src_path + '/tmp'))
 
@@ -416,7 +420,7 @@ def generate_commands(args):
     elif args.op == 'plot':
 
         if args.plot_tags is None:
-            print('---- No model tags specified')
+            wrap_print('---- No model tags specified')
             return commands, params, usertag, save
         params = deepcopy(PLOT_PARAMS)
         arg_set = set(vars(args))
@@ -457,7 +461,7 @@ def run():
             if sys.version_info[0] == 2: save = raw_input('SAVE/REGISTER EXPERIMENT? -> (Y/N): ')
             elif sys.version_info[0] == 3: save = input('SAVE/REGISTER EXPERIMENT -> (Y/N): ')
             if save != 'Y':
-                print('---- Exiting without updating registry or database')
+                wrap_print('---- Exiting without updating registry or database')
                 return
 
             os.system('sleep 5') # wait to be sure the experiment is successfully launched
@@ -473,10 +477,10 @@ def run():
                     exp_id = get_value(usertag, 'experiment_id', args.registry)
                     params_id = get_value(usertag, 'params_id', args.registry)
                 update_registry(args, usertag, repeat_count, exp_id, params_id)
-                print('---- Successfully stored parameters, and updated registry')
+                wrap_print('---- Successfully stored parameters, and updated registry')
 
     else:
-        print('---- Exiting with no changes')
+        wrap_print('---- Exiting with no changes')
 
 if __name__ == '__main__':
     run()

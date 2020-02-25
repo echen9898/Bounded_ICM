@@ -1,6 +1,6 @@
 constants = {
 'GAMMA': 0.99,  # discount factor for rewards
-'LAMBDA': 1.0,  # lambda of Generalized Advantage Estimation: https://arxiv.org/abs/1506.02438
+'LAMBDA': 0.7,  # lambda of Generalized Advantage Estimation: https://arxiv.org/abs/1506.02438
 'ENTROPY_BETA': 0.01,  # entropy regurarlization constant. FOR MARIO: 0.0005, FOR DOOM: 0.01
 'ROLLOUT_MAXLEN': 20, # 20 represents the number of 'local steps': the number of timesteps
                     # we run the policy before we update the parameters.
@@ -13,10 +13,10 @@ constants = {
 'MAX_GLOBAL_STEPS': 100000000,  # total steps taken across all workers
 'LEARNING_RATE': 1e-4,  # learning rate for adam
 
-'PREDICTION_BETA': 0.2,  # weight of prediction bonus. FOR MARIO: 0.2, FOR DOOM: 0.01
+'PREDICTION_BETA': 0.01,  # weight of prediction bonus. FOR MARIO: 0.2, FOR DOOM: 0.01
                           # set 0.5 for unsup=state
 'PREDICTION_LR_SCALE': 10.0,  # scale lr of predictor wrt to policy network
-                              # set 30-50 for unsup=state
+                              # set 30-50 for unsup=state.
 'FORWARD_LOSS_WT': 0.2,  # should be between [0,1]
                           # predloss = ( (1-FORWARD_LOSS_WT) * inv_loss + FORWARD_LOSS_WT * forward_loss) * PREDICTION_LR_SCALE
 'POLICY_NO_BACKPROP_STEPS': 0,  # number of global steps after which we start backpropagating to policy

@@ -111,10 +111,16 @@ def get_count(query, registry_path, verbatim=True):
 def create_usertag(args):
     ''' Create a usertag with the following format: alg_setting_# (e.g. icm_dense_3) '''
 
-    if args.tag: # rerunning 
+    # Rerunning experiment
+    if args.tag:
         usertag = args.tag.split('.')
         usertag[1] = str(get_count(usertag[0], args.registry, verbatim=False))
         return '.'.join(usertag)
+
+    # Finetuning experiment
+    if args.pretrain:
+        usertag = args.pretrain.split('/')[-3] + '_finetuned'
+        return usertag
 
     # Algorithm choice (none, icm, icmpix)
     if args.unsup == None: algo = 'none'
@@ -169,7 +175,7 @@ def update_experiment_count(usertag, registry_path):
 def update_registry(args, usertag, seed_num, exp_id, params_id):
     ''' Update the experiment registry '''
 
-    if args.tag is None: # only count new trials (not seeds)
+    if args.tag is None and not args.pretrain: # only count new trials (not seeds)
         update_experiment_count(usertag, args.registry)
 
     book = load_workbook(args.registry)

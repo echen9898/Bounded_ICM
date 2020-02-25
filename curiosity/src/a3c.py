@@ -10,7 +10,7 @@ import distutils.version
 from constants import constants
 from utils import RunningMeanStd, update_mean_var_count_from_moments
 use_tf12_api = distutils.version.LooseVersion(tf.VERSION) >= distutils.version.LooseVersion('0.12.0')
-
+import pdb
 
 def discount(x, gamma):
     """
@@ -186,7 +186,6 @@ def env_runner(env, policy, num_local_steps, summary_writer, render, predictor,
     while True:
         terminal_end = False
         rollout = PartialRollout(predictor is not None)
-
         for _ in range(num_local_steps):
             # run policy
             fetched = policy.act(last_state, *last_features)
@@ -235,6 +234,7 @@ def env_runner(env, policy, num_local_steps, summary_writer, render, predictor,
                     life_bonus = 0
                 else:
                     print("Episode finished. Sum of shaped rewards: %.2f. Length: %d." % (rewards, length))
+                print('-'*100)
                 if 'distance' in info: print('Mario Distance Covered:', info['distance'])
                 length = 0
                 rewards = 0
