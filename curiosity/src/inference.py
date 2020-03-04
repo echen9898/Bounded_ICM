@@ -213,7 +213,7 @@ def main(_):
     parser.add_argument('--designHead', type=str, default='universe', help="Network deign head: nips or nature or doom or universe(default)")
     parser.add_argument('--num-episodes', type=int, default=2, help="Number of episodes to run")
     parser.add_argument('--noop', action='store_true', help="Add 30-noop for inference too (recommended by Nature paper, don't know?)")
-    parser.add_argument('--acRepeat', type=int, default=0, help="Actions to be repeated at inference. 0 means default. applies iff envWrap is True.")
+    parser.add_argument('--acRepeat', type=int, default=1, help="Actions to be repeated at inference. 0 means default. applies iff envWrap is True.")
     parser.add_argument('--greedy', action='store_true', help="Default sampled policy. This option does argmax.")
     parser.add_argument('--random', action='store_true', help="Default sampled policy. This option does random policy.")
     parser.add_argument('--default', action='store_true', help="run with default params")

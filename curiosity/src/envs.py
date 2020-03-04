@@ -87,6 +87,10 @@ def create_mario(env_id, client_id, envWrap=True, record=False, outdir=None,
                     noLifeReward=False, acRepeat=0, record_frequency=None, **_):
     import ppaquette_gym_super_mario
     from ppaquette_gym_super_mario import wrappers
+
+    path = os.path.abspath(ppaquette_gym_super_mario.__file__)
+    print(path)
+
     if '-v' in env_id.lower():
         env_id = 'ppaquette/' + env_id
     else:

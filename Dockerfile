@@ -47,4 +47,7 @@ RUN pip install -r ./requirements.txt
 COPY ./vizdoomgym /vizdoomgym
 WORKDIR /vizdoomgym
 RUN pip install -e /vizdoomgym
+COPY ./gym-super-mario /gym-super-mario
+WORKDIR /gym-super-mario
+RUN pip install -e /gym-super-mario
 WORKDIR /

@@ -20,7 +20,11 @@ services:
     container_name: 'trainer'
     volumes:
       - ./:/bounded_curiosity
+      - ./gym-super-mario:/gym-super-mario
+      - /tmp/.X11-unix:/tmp/.X11-unix
     ports:
       - '8080:8080'
     tty: true
     stdin_open: true
+    environment:
+      - DISPLAY=${HOSTNAME}:0

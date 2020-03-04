@@ -33,9 +33,9 @@ STYLES = {
 
 def wrap_print(text):
     print('\n')
-    print('-'*100)
+    print('-'*60)
     print(text)
-    print('-'*100)
+    print('-'*60)
     print('\n')
 
 
@@ -119,7 +119,10 @@ def create_usertag(args):
 
     # Finetuning experiment
     if args.pretrain:
-        usertag = args.pretrain.split('/')[-3] + '_finetuned'
+        if 'very' in args.env_id.lower(): usertag = args.pretrain.split('/')[-3] + '_ftVerySparse'
+        elif 'sparse' in args.env_id.lower(): usertag = args.pretrain.split('/')[-3] + '_ftSparse'
+        elif 'mario' in args.env_id.lower(): print("NOT IMPLEMENTED CHECK CREATE USERTAG")
+        else: usertag = args.pretrain.split('/')[-3] + '_ftDense'
         return usertag
 
     # Algorithm choice (none, icm, icmpix)

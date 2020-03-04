@@ -11,4 +11,4 @@ ops.py
 /curiosity/src/_vizdoom*
 /curiosity/src/tmp
 /curiosity/results
-*.egg-info
+*.egg-info*

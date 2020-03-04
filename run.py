@@ -75,7 +75,7 @@ INF_PARAMS = {
     'designHead':'universe',
     'num_episodes':2,
     'noop':False,
-    'acRepeat':0,
+    'acRepeat':1,
     'greedy':False,
     'random':False,
     'default':True,
@@ -161,7 +161,7 @@ parser.add_argument('--envWrap', type=bool, default=True, help="Preprocess input
 parser.add_argument('--designHead', type=str, default='universe', help="Network deign head: nips or nature or doom or universe(default)")
 parser.add_argument('--num-episodes', type=int, default=2, help="Number of episodes to run")
 parser.add_argument('--noop', type=bool, default=False, help="Add 30-noop for inference too (recommended by Nature paper, don't know?)")
-parser.add_argument('--acRepeat', type=int, default=0, help="Actions to be repeated at inference. 0 means default. applies iff envWrap is True.")
+parser.add_argument('--acRepeat', type=int, default=1, help="Actions to be repeated at inference. 0 means default. applies iff envWrap is True.")
 parser.add_argument('--greedy', type=bool, default=False, help="Default sampled policy. This option does argmax.")
 parser.add_argument('--random', type=bool, default=False, help="Default sampled policy. This option does random policy.")
 parser.add_argument('--default', type=bool, default=True, help="run with default params")

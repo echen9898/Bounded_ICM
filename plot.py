@@ -28,6 +28,12 @@ parser.add_argument('--right-x', type=int, default=10000000, help='Rightmost x-a
 parser.add_argument('--span', type=float, default=150.0, help='Smoothing parameter for EWMA. 150 for Doom, 500 for Mario is safe.')
 
 # ------------------------------------------- STYLING ------------------------------------------- #
+def print_groups(groupobject):
+        for name, group in groupobject:
+            print('NAME: ', name)
+            print(group)
+            print('-'*50)
+
 def get_new_labels():
     ''' Dynamically reassign more concise labels based on x axis units
     '''
@@ -150,6 +156,7 @@ def plot_tags(args):
     tags = args.plot_tags.split('+')
     tags = [t.strip() for t in tags]
     count = 0
+    tag_frames = list()
     for usertag in tags:
 
         if 'mario' in usertag.lower(): os.chdir(RESULTS_PATH_MARIO)
@@ -163,21 +170,32 @@ def plot_tags(args):
         # Extract raw data
         os.chdir('{}/model'.format(usertag))
         df = extract_data(usertag, tags, args) # either averaged, or train_0
+        tag_frames.append(df) # save to calculate std
 
         # Plot each curve
         if args.ave_tags in {False, 'False'}:
             plot = sb.lineplot(x=args.x_axis, y='value', data=df, label='{}'.format(usertag.replace('_', ' ')))
         # or ... concatenate them and plot at the end
         else:
+            df = interpolate(df, args) # costly, but sets each curve to the same x ticks
             if count == 0: final_df = df
             else: final_df = pd.concat((final_df, df))
             count += 1
         os.chdir('../'*6)
 
-    # If averaging over tags, plot them here at the end
+    # If averaging over tags, plot them here at the end (with standard deviation bars)
     if args.ave_tags in {True, 'True'}:
-        final_df = final_df.groupby(level=0).mean()
-        plot = sb.lineplot(x=args.x_axis, y='value', data=final_df, label='{}'.format('Averaged tags: {}'.format(tags)))
+        final_df = final_df.groupby(level=0) # group by interpolated step
+        df_mean = final_df.aggregate(np.mean)
+        df_std = final_df.aggregate(np.std)
+        df_mean['upper'] = df_mean['value'] + df_std['value']
+        df_mean['lower'] = df_mean['value'] - df_std['value']
+        df.loc[df_mean['upper'] < 0] = 0 # so error bands stay above min (BUG: DOESNT ASSIGN)
+        df.loc[df_mean['lower'] < 0] = 0
+        df.loc[df_mean['upper'] > 1.0] = 1.0 # so error bands stay below max (DOESNT ASSIGN)
+        df.loc[df_mean['lower'] > 1.0] = 1.0
+        plot = sb.lineplot(x=args.x_axis, y='value', data=df_mean, label='{}'.format('Averaged tags: {}'.format(tags)))
+        plot.fill_between(x=np.arange(args.left_x, args.right_x, args.x_increment), y1=df_mean['lower'], y2=df_mean['upper'], alpha=0.2)
 
     # Save plot option
     style(args)
