@@ -17,7 +17,7 @@ COLS = {
 
 # row indexes of interest
 ROWS = {
-    'header':17
+    'header':23
 }
 
 # dictionary of custom styles
@@ -113,31 +113,37 @@ def create_usertag(args):
 
     # Rerunning experiment
     if args.tag:
+        algo = ''
         usertag = args.tag.split('.')
         usertag[1] = str(get_count(usertag[0], args.registry, verbatim=False))
-        return '.'.join(usertag)
 
     # Finetuning experiment
     if args.pretrain:
-        if 'very' in args.env_id.lower(): usertag = args.pretrain.split('/')[-3] + '_ftVerySparse'
-        elif 'sparse' in args.env_id.lower(): usertag = args.pretrain.split('/')[-3] + '_ftSparse'
+        pretrain_tag = args.pretrain.split('/')[-3].split('_')
+        algo = pretrain_tag[0]
+        if 'very' in args.env_id.lower(): 
+            setting = pretrain_tag[1] + '_ftVerySparse'
+        elif 'sparse' in args.env_id.lower(): 
+            setting = pretrain_tag[1 ] + '_ftSparse'
         elif 'mario' in args.env_id.lower(): print("NOT IMPLEMENTED CHECK CREATE USERTAG")
-        else: usertag = args.pretrain.split('/')[-3] + '_ftDense'
-        return usertag
+        else: print("NOT IMPLEMENTED CHECK CREATE USERTAG")
+        print(algo, setting)
 
-    # Algorithm choice (none, icm, icmpix)
-    if args.unsup == None: algo = 'none'
-    elif args.unsup == 'action': algo = 'icm'
-    elif 'state' in args.unsup.lower(): algo = 'icmpix'
+    # New experiment
+    else:
+        # Algorithm choice (none, icm, icmpix)
+        if args.unsup == None: algo = 'none'
+        elif args.unsup == 'action': algo = 'icm'
+        elif 'state' in args.unsup.lower(): algo = 'icmpix'
 
-    # Reward setting (dense, sparse, verySparse)
-    if 'doom' in args.env_id.lower():
-        if 'labyrinth' in args.env_id.lower(): setting='labyrinth'
-        elif 'very' in args.env_id.lower(): setting='verySparse'
-        elif 'sparse' in args.env_id.lower(): setting='sparse'
-        else: setting='dense'
-    elif 'mario' in args.env_id.lower():
-        setting = args.env_id
+        # Reward setting (dense, sparse, verySparse)
+        if 'doom' in args.env_id.lower():
+            if 'labyrinth' in args.env_id.lower(): setting='labyrinth'
+            elif 'very' in args.env_id.lower(): setting='verySparse'
+            elif 'sparse' in args.env_id.lower(): setting='sparse'
+            else: setting='dense'
+        elif 'mario' in args.env_id.lower():
+            setting = args.env_id
 
     # Unique count id
     row_index = get_row_index('{}_{}'.format(algo, setting), args.registry)
@@ -148,7 +154,14 @@ def create_usertag(args):
     # Seed number
     seed = get_count('{}_{}_{}'.format(algo, setting, trial_number), args.registry)
 
-    return '{}_{}_{}.{}'.format(algo, setting, trial_number, seed)
+    # Insert the pretrain tags trial/seed number back into the setting
+    if args.pretrain:
+        setting = setting.split('_')
+        setting.insert(1, pretrain_tag[2])
+        setting = '_'.join(setting)
+
+    usertag = '{}_{}_{}.{}'.format(algo, setting, trial_number, seed)
+    return None
 
 def dict_to_command(args, store_true_args, default_params, mode):
     ''' Convert a dictionary into a sequence of command line arguments '''
