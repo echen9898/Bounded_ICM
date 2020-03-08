@@ -20,7 +20,8 @@ CONFIGS = [['basic.cfg', 'basic.wad', 3, 5],                                    
            ['labyrinth.cfg', 'labyrinth_single.wad', 3, 5],                        # 12
            ['labyrinth.cfg', 'labyrinth_many_fixed.wad', 3, 5],                    # 13
            ['labyrinth.cfg', 'labyrinth_many.wad', 3, 5],                          # 14
-           ['labyrinth.cfg', 'labyrinth_randtx.wad', 3, 5]]                        # 15
+           ['labyrinth.cfg', 'labyrinth_randtx.wad', 3, 5],                        # 15
+           ['labyrinth.cfg', 'labyrinth_randtx2.wad', 3, 5]]                       # 16
 
 
 # Maps actions from deprecated ppaquette package to new vizdoom environment

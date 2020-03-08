@@ -24,7 +24,6 @@ def change_textures(in_map, textures_file):
         mode = 'all_the_same'   
 
     mode = 'all_rand'
-    print(mode)
         
     map_editor = omg.MapEditor(in_map)
     
@@ -38,8 +37,6 @@ def change_textures(in_map, textures_file):
         for s in map_editor.sectors:
             s.tx_floor = random.choice(textures)
             s.tx_ceil = random.choice(textures)
-            print('floor: ', s.tx_floor)
-            print('ceil: ', s.tx_ceil)
     elif mode == 'walls_ceil_floor':
         wall_tx = random.choice(textures)
         floor_tx = random.choice(textures)
@@ -84,13 +81,13 @@ if __name__ == '__main__':
     map_name = sys.argv[1]
     mode = sys.argv[2]
 
-    in_file = '../{}.wad'.format(map_name)
-    out_file = '../labyrinth_randtx.wad'.format(map_name, mode)
+    in_file = '../{}'.format(map_name)
+    out_file = '../labyrinth_randtx2.wad'.format(map_name, mode)
 
     if mode == 'all':
         texture_files = ['all_textures.txt'] * 98
     elif mode == 'train':
-        texture_files = ['train_textures.txt'] * 98
+        texture_files = ['train_textures_original.txt'] * 98
     elif mode == 'test':
         texture_files = ['test_textures.txt'] * 98
     elif mode == 'mix':

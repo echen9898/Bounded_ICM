@@ -21,7 +21,8 @@ ALLOWED_ACTIONS = [
     [13, 14, 15],                               # 12 - LabyrinthSingle
     [13, 14, 15],                               # 13 - LabyrinthManyFixed
     [13, 14, 15],                               # 14 - LabyrinthMany
-    [13, 14, 15]                                # 15 - LabyrinthRandTx
+    [13, 14, 15],                               # 15 - LabyrinthRandTx
+    [13, 14, 15]                                # 16 - LabyrinthRandTx2
 ]
 
 __all__ = [ 'ToDiscrete', 'ToBox' ]
