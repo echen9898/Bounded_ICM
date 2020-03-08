@@ -116,6 +116,7 @@ def create_usertag(args):
         algo = ''
         usertag = args.tag.split('.')
         usertag[1] = str(get_count(usertag[0], args.registry, verbatim=False))
+        return '.'.join(usertag)
 
     # Finetuning experiment
     if args.pretrain:
@@ -127,11 +128,9 @@ def create_usertag(args):
             setting = pretrain_tag[1 ] + '_ftSparse'
         elif 'mario' in args.env_id.lower(): print("NOT IMPLEMENTED CHECK CREATE USERTAG")
         else: print("NOT IMPLEMENTED CHECK CREATE USERTAG")
-        print(algo, setting)
 
     # New experiment
     else:
-        print("NEWWW")
         # Algorithm choice (none, icm, icmpix)
         if args.unsup == None: algo = 'none'
         elif args.unsup == 'action': algo = 'icm'
@@ -147,7 +146,6 @@ def create_usertag(args):
             setting = args.env_id
 
     # Unique count id
-    print(algo, setting)
     row_index = get_row_index('{}_{}'.format(algo, setting), args.registry)
     book = load_workbook(args.registry, read_only=True)
     table = row_matrix(book['Experiments'])
