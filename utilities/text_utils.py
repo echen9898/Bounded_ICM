@@ -131,6 +131,7 @@ def create_usertag(args):
 
     # New experiment
     else:
+        print("NEWWW")
         # Algorithm choice (none, icm, icmpix)
         if args.unsup == None: algo = 'none'
         elif args.unsup == 'action': algo = 'icm'
@@ -146,6 +147,7 @@ def create_usertag(args):
             setting = args.env_id
 
     # Unique count id
+    print(algo, setting)
     row_index = get_row_index('{}_{}'.format(algo, setting), args.registry)
     book = load_workbook(args.registry, read_only=True)
     table = row_matrix(book['Experiments'])
@@ -161,7 +163,7 @@ def create_usertag(args):
         setting = '_'.join(setting)
 
     usertag = '{}_{}_{}.{}'.format(algo, setting, trial_number, seed)
-    return None
+    return usertag
 
 def dict_to_command(args, store_true_args, default_params, mode):
     ''' Convert a dictionary into a sequence of command line arguments '''
