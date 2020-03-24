@@ -57,7 +57,7 @@ def run(args, server):
     env = create_env(args.env_id, client_id=str(args.task), remotes=args.remotes, envWrap=args.envWrap, designHead=args.designHead,
                         noLifeReward=args.noLifeReward, record=visualise, record_frequency=args.record_frequency, outdir=args.record_dir)
     
-    trainer = A3C(env, args.task, args.visualise, args.unsup, args.envWrap, args.designHead, args.noReward, args.bonus_bound, args.adv_norm, obs_mean, obs_std, args.rew_norm, args.backup_bound)
+    trainer = A3C(env, args.task, args.visualise, args.unsup, args.envWrap, args.designHead, args.noReward, args.bonus_bound, args.adv_norm, obs_mean, obs_std, args.rew_norm, args.backup_bound, args.horizon, args.mstep_mode)
 
     # logging
     if args.task == 0:
@@ -191,6 +191,8 @@ Setting up Tensorflow for data parallel work
     parser.add_argument('--obs-norm', action='store_true', help="Locally tandardize observations (pixelwise, individually by channel)")
     parser.add_argument('--rew-norm', action='store_true', help="Normalize batch rewards by dividing by running standard deviation")
     parser.add_argument('--backup-bound', type=float, default=-1.0, help="Bound the intrinsic reward discounted sum (backup term) before computing network targets")
+    parser.add_argument('--horizon', type=int, default=1, help="Multi-step prediction horizon")
+    parser.add_argument('--mstep-mode', type=str, default='sum', help="How to process the multi-step prediction rewards into a single reward (sum, dissum, max)")
     args = parser.parse_args()
 
     spec = cluster_spec(args.num_workers, 1, args.psPort)

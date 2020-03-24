@@ -34,6 +34,8 @@ parser.add_argument('--adv-norm', action='store_true', help="Normalize batch adv
 parser.add_argument('--obs-norm', action='store_true', help="Locally standardize observations (pixelwise, individually by channel)")
 parser.add_argument('--rew-norm', action='store_true', help="Normalize batch rewards by dividing by running standard deviation")
 parser.add_argument('--backup-bound', type=float, default=-1.0, help="Bound the intrinsic reward discounted sum (backup term) before computing network targets")
+parser.add_argument('--horizon', type=int, default=1, help="Multi-step prediction horizon")
+parser.add_argument('--mstep-mode', type=str, default='sum', help="How to process the multi-step prediction rewards into a single reward (sum, dissum, max)")
 
 def new_cmd(session, name, cmd, mode, logdir, shell):
     if isinstance(cmd, (list, tuple)):
@@ -50,7 +52,7 @@ def create_commands(session, num_workers, remotes, env_id, logdir, shell='bash',
                     mode='tmux', visualise=False, envWrap=False, designHead=None,
                     unsup=None, noReward=False, noLifeReward=False, psPort=12222,
                     delay=0, savio=False, pretrain=None, record_frequency=None, record_dir='tmp/model/videos',
-                    bonus_bound=None, adv_norm=False, obs_norm=False, rew_norm=False, backup_bound=None):
+                    bonus_bound=None, adv_norm=False, obs_norm=False, rew_norm=False, backup_bound=None, horizon=1, mstep_mode='sum'):
     # for launching the TF workers and for launching tensorboard
     py_cmd = 'python' if savio else sys.executable
     base_cmd = [
@@ -87,6 +89,10 @@ def create_commands(session, num_workers, remotes, env_id, logdir, shell='bash',
         base_cmd += ['--rew-norm']
     if backup_bound:
         base_cmd += ['--backup-bound', backup_bound]
+    if horizon:
+        base_cmd += ['--horizon', horizon]
+    if mstep_mode:
+        base_cmd += ['--mstep-mode', mstep_mode]
     if pretrain not in [None, 'None']:
         base_cmd += ['--pretrain', pretrain]
     if remotes in [None, 'None']:
@@ -160,7 +166,7 @@ def run():
                                     delay=delay, savio=args.savio, pretrain=args.pretrain,
                                     record_frequency=args.record_frequency, record_dir=args.record_dir,
                                     bonus_bound=args.bonus_bound, adv_norm=args.adv_norm, obs_norm=args.obs_norm,
-                                    rew_norm=args.rew_norm, backup_bound=args.backup_bound)
+                                    rew_norm=args.rew_norm, backup_bound=args.backup_bound, horizon=args.horizon, mstep_mode=args.mstep_mode)
     if args.dry_run:
         print("Dry-run mode due to -n flag, otherwise the following commands would be executed:")
     else:

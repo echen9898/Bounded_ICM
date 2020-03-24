@@ -34,7 +34,7 @@ class ExpMngConfigHelper(ConfigHelper):
 
 def get_config():
   """ Return configuration parameters."""
-  opts = {'EXP_PARAMS_MONGO_SERVER': '10.142.0.3', # db if using docker-compose, else specify a host IP
+  opts = {'EXP_PARAMS_MONGO_SERVER': '10.142.0.3', # db if using docker-compose, else specify a host IP (for gcp 10.142.0.3)
            'EXP_PARAMS_MONGO_PORT': '27017',
            'EXP_PARAMS_AUTH_DB': 'params',
            'EXP_PARAMS_USER': 'default',

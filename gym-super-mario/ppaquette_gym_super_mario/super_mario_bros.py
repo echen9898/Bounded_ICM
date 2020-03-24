@@ -43,7 +43,6 @@ class SuperMarioBrosEnv(NesEnv):
         NesEnv.__init__(self)
         package_directory = os.path.dirname(os.path.abspath(__file__))
         self.level = level
-        self.iteration = -19
         self.draw_tiles = 1 if draw_tiles else 0
         self._mode = 'algo'             # 'algo' or 'human'
         self.lua_path.append(os.path.join(package_directory, 'lua/super-mario-bros.lua'))
@@ -203,7 +202,6 @@ class SuperMarioBrosEnv(NesEnv):
             return
 
         # Processing
-        print('MESSAGE TYPE: ', message_type)
         if 'data' == message_type:
             self._process_data_message(frame_number, data)
         elif 'screen' == message_type:
@@ -246,7 +244,7 @@ class SuperMarioBrosEnv(NesEnv):
             'time': -1,
             'player_status': -1,
             'iteration': -1
-            }
+        }
 
 
 class MetaSuperMarioBrosEnv(SuperMarioBrosEnv, MetaNesEnv):

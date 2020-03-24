@@ -51,7 +51,6 @@ class NesEnv(gym.Env, utils.EzPickle):
         self.cmd_args = ['--xscale 2', '--yscale 2', '-f 0']
         self.lua_path = []
         self.subprocess = None
-        self.fceux_pid = None
         self.no_render = True
         self.viewer = None
 
@@ -80,8 +79,6 @@ class NesEnv(gym.Env, utils.EzPickle):
         self._reset_info_vars()
         self.first_step = False
         self.lock = (NesLock()).get_lock()
-
-        self.temp_lua_path = ""
 
         # Seeding
         self.curr_seed = 0
@@ -193,8 +190,8 @@ class NesEnv(gym.Env, utils.EzPickle):
         self._create_pipes()
 
         # Creating temporary lua file
-        self.temp_lua_path = os.path.join('/tmp', str(seeding.hash_seed(None) % 2 ** 32) + '.lua')
-        temp_lua_file = open(self.temp_lua_path, 'w', 1)
+        temp_lua_path = os.path.join('/tmp', str(seeding.hash_seed(None) % 2 ** 32) + '.lua')
+        temp_lua_file = open(temp_lua_path, 'w', 1)
         for k, v in list(self.launch_vars.items()):
             temp_lua_file.write('%s = "%s";\n' % (k, v))
         i = 0
@@ -215,13 +212,11 @@ class NesEnv(gym.Env, utils.EzPickle):
         # Loading fceux
         args = [FCEUX_PATH]
         args.extend(self.cmd_args[:])
-        args.extend(['--loadlua', self.temp_lua_path])
+        args.extend(['--loadlua', temp_lua_path])
         args.append(self.rom_path)
         args.extend(['>/dev/null', '2>/dev/null', '&'])
-        self.subprocess = subprocess.Popen("/bin/bash", shell=False, universal_newlines=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)                             
-        stdout, stderr = self.subprocess.communicate(' '.join(args) + "\necho $!")
-        self.fceux_pid = int(stdout)
-
+        self.subprocess = subprocess.Popen(' '.join(args), shell=True)
+        self.subprocess.communicate()
         if 0 == self.subprocess.returncode:
             self.is_initialized = 1
             if not self.disable_out_pipe:
@@ -232,9 +227,9 @@ class NesEnv(gym.Env, utils.EzPickle):
                         self.pipe_out = None
             # Removing lua file
             sleep(1)  # Sleeping to make sure fceux has time to load file before removing
-            if os.path.isfile(self.temp_lua_path):
+            if os.path.isfile(temp_lua_path):
                 try:
-                    os.remove(self.temp_lua_path)
+                    os.remove(temp_lua_path)
                 except OSError:
                     pass
         else:
@@ -269,7 +264,7 @@ class NesEnv(gym.Env, utils.EzPickle):
         # Overridable - Returns the other variables
         return self.info
 
-    def step(self, action):
+    def _step(self, action):
         if 0 == self.is_initialized:
             return self._get_state(), 0, self._get_is_finished(), {}
 
@@ -329,7 +324,13 @@ class NesEnv(gym.Env, utils.EzPickle):
                     # Game stuck, returning
                     # Likely caused by fceux incoming pipe not working
                     logger.warn('Closing episode (appears to be stuck). See documentation for how to handle this issue.')
-                    self._terminate_fceux()
+                    if self.subprocess is not None:
+                        # Workaround, killing process with pid + 1 (shell = pid, shell + 1 = fceux)
+                        try:
+                            os.kill(self.subprocess.pid + 1, signal.SIGKILL)
+                        except OSError:
+                            pass
+                        self.subprocess = None
                     return self._get_state(), 0, True, {'ignore': True}
 
         # Getting results
@@ -339,9 +340,7 @@ class NesEnv(gym.Env, utils.EzPickle):
         info = self._get_info()
         return state, reward, is_finished, info
 
-    def reset(self):
-        self._terminate_fceux()
-
+    def _reset(self):
         if 1 == self.is_initialized:
             self.close()
         self.last_frame = 0
@@ -377,11 +376,18 @@ class NesEnv(gym.Env, utils.EzPickle):
                 self.viewer = rendering.SimpleImageViewer()
             self.viewer.imshow(img)
 
-    def close(self):
+    def _close(self):
+        # Terminating thread
         self.is_exiting = 1
         self._write_to_pipe('exit')
         sleep(0.05)
-        self._terminate_fceux()
+        if self.subprocess is not None:
+            # Workaround, killing process with pid + 1 (shell = pid, shell + 1 = fceux)
+            try:
+                os.kill(self.subprocess.pid + 1, signal.SIGKILL)
+            except OSError:
+                pass
+            self.subprocess = None
         sleep(0.001)
         self._close_pipes()
         self.last_frame = 0
@@ -391,16 +397,6 @@ class NesEnv(gym.Env, utils.EzPickle):
         self.screen = np.zeros(shape=(self.screen_height, self.screen_width, 3), dtype=np.uint8)
         self._reset_info_vars()
         self.is_initialized = 0
-
-    def _terminate_fceux(self):
-        if self.subprocess is not None:
-            try:
-                os.kill(self.fceux_pid, signal.SIGKILL)
-            except OSError as e:
-                cmd = "kill -9 $(ps -ef | grep 'fceux' | grep " + self.temp_lua_path + " | awk '{print $2}')"
-                os.system(cmd)
-                pass
-            self.subprocess = None
 
     def _seed(self, seed=None):
         self.curr_seed = seeding.hash_seed(seed) % 256
@@ -641,7 +637,7 @@ class MetaNesEnv(NesEnv):
                 averages[i] = round(level_average, 4)
         return averages
 
-    def reset(self):
+    def _reset(self):
         # Reset is called on first step() after level is finished
         # or when change_level() is called. Returning if neither have been called to
         # avoid resetting the level twice
@@ -660,12 +656,12 @@ class MetaNesEnv(NesEnv):
         self.screen = np.zeros(shape=(self.screen_height, self.screen_width, 3), dtype=np.uint8)
         return self._get_state()
 
-    def step(self, action):
+    def _step(self, action):
         # Changing level
         if self.find_new_level:
             self.change_level()
 
-        obs, step_reward, is_finished, info = NesEnv.step(self, action)
+        obs, step_reward, is_finished, info = NesEnv._step(self, action)
         reward, self.total_reward = self._calculate_reward(self._get_episode_reward(), self.total_reward)
         # First step() after new episode returns the entire total reward
         # because stats_recorder resets the episode score to 0 after reset() is called

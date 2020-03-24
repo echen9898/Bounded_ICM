@@ -1,5 +1,6 @@
 constants = {
 'GAMMA': 0.99,  # discount factor for rewards
+'MULTISTEP_GAMMA': 0.9,  # discount factor for multistep prediction intrinsic reward
 'LAMBDA': 0.7,  # lambda of Generalized Advantage Estimation: https://arxiv.org/abs/1506.02438
 'ENTROPY_BETA': 0.01,  # entropy regurarlization constant. FOR MARIO: 0.0005, FOR DOOM: 0.01
 'ROLLOUT_MAXLEN': 20, # 20 represents the number of 'local steps': the number of timesteps

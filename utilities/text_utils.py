@@ -113,7 +113,6 @@ def create_usertag(args):
 
     # Rerunning experiment
     if args.tag:
-        algo = ''
         usertag = args.tag.split('.')
         usertag[1] = str(get_count(usertag[0], args.registry, verbatim=False))
         return '.'.join(usertag)

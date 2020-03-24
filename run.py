@@ -39,7 +39,9 @@ TRAINING_PARAMS = {
     'adv_norm':False,
     'obs_norm':False,
     'rew_norm':False,
-    'backup_bound':-1.0
+    'backup_bound':-1.0,
+    'horizon':1,
+    'mstep_mode':'sum'
 }
 
 # arguments with 'action = store_true' in train.py
@@ -137,6 +139,8 @@ parser.add_argument('-adv-norm', type=bool, default=False, help='Normalize batch
 parser.add_argument('-obs-norm', type=bool, default=False, help='Locally tandardize observations (pixelwise, individually by channel)')
 parser.add_argument('-rew-norm', type=bool, default=False, help='Normalize batch rewards by dividing by running standard deviation')
 parser.add_argument('-backup-bound', type=float, default=-1.0, help="Bound the intrinsic reward discounted sum (backup term) before computing network targets")
+parser.add_argument('-horizon', type=int, default=1, help="Multi-step prediction horizon")
+parser.add_argument('-mstep-mode', type=str, default='sum', help="How to process the multi-step prediction rewards into a single reward (sum, dissum, max)")
 
 # DEMO OP ARGUMENTS
 # parser.add_argument('--ckpt', default='../models/doom/doom_ICM', help='Checkpoint name')
