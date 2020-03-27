@@ -358,7 +358,7 @@ end;
 
 -- show_curr_distance - Displays the current distance on the map with percentage
 function show_curr_distance()
-    local distance = "Distance " .. curr_x_position .. " Pages on pages dog ";
+    local distance = "Distance " .. curr_x_position;
     distance = distance .. " (" .. get_distance_perc(curr_x_position, max_distance) .. ")";
     return emu.message(distance);
 end;

@@ -11,6 +11,7 @@ from constants import constants
 from utils import RunningMeanStd, update_mean_var_count_from_moments
 use_tf12_api = distutils.version.LooseVersion(tf.VERSION) >= distutils.version.LooseVersion('0.12.0')
 import pdb
+import itertools
 
 
 def discount(x, gamma, trivial=False):
@@ -33,16 +34,19 @@ def zero_pad_multistep_bonuses(bonuses, horizon):
     Takes in [ [r_1, r_2 ... r_k], ... [r_1, r_2, ... , None, None, None] ] rollouts corresponding to each (s_t, a_t), 
     and replaces all Nones with zeroes the unobtainable horizon predictions at the end of the episodes.
     """
-    for h in range(horizon):
-        for i in range(len(bonuses[-(h+1)])):
-            if bonuses[-(h+1)][i] is None:
-                bonuses[-(h+1)][i] = 0.0
+    for i, rewards in reversed(list(enumerate(bonuses))):
+        if None not in rewards:
+            break
+        else:
+            for h in range(horizon):
+                if bonuses[i][h] is None:
+                    bonuses[i][h] = 0.0
     return bonuses
 
-def group_action_sequences(actions, h):
+def group_action_sequences(actions, h, all_zero=True):
     """
     Takes in a sequence of actions, and groups them in terms of horizon h rollouts starting from each action:
-    [a_1, a_2, a_3], h=2  --->  [[a_1 + a_2], [a_2 + a_3]]
+    [a_1, a_2, a_3], h=2  --->  [[a_1 + a_2], [a_2 + a_3]]. All_zero parameter just makes the function return zero array of correct dimension
     """
     grouped = list()
     for i in range(len(actions)-h+1):
@@ -139,6 +143,7 @@ class PartialRollout(object):
         if self.unsup:
             self.bonuses = []
             self.end_state = None
+            self.multistep_bonuses = []
 
     def add(self, state, action, reward, value, terminal, features,
                 bonus=None, end_state=None, multistep_bonuses=None):
@@ -153,8 +158,9 @@ class PartialRollout(object):
             self.end_state = end_state
             self.multistep_bonuses = multistep_bonuses
 
-    def extend(self, other):
-        assert not self.terminal
+    def extend(self, other, rollout_end=False):
+        if not rollout_end:
+            assert not self.terminal
         self.states.extend(other.states)
         self.actions.extend(other.actions)
         self.rewards.extend(other.rewards)
@@ -163,9 +169,11 @@ class PartialRollout(object):
         self.terminal = other.terminal
         self.features.extend(other.features)
         if self.unsup:
+            self.bonuses = list(self.bonuses)
             self.bonuses.extend(other.bonuses)
             self.end_state = other.end_state
             self.multistep_bonuses.extend(other.multistep_bonuses)
+
 
 class RunnerThread(threading.Thread):
     """
@@ -211,9 +219,7 @@ class RunnerThread(threading.Thread):
             # the timeout variable exists because apparently, if one worker dies, the other workers
             # won't die with it, unless the timeout is set to some large number.  This is an empirical
             # observation.
-
             self.queue.put(next(rollout_provider), timeout=600.0)
-
 
 def env_runner(env, policy, num_local_steps, summary_writer, render, predictors,
                 envWrap, noReward, bonus_bound, obs_mean, obs_std, horizon):
@@ -224,28 +230,31 @@ def env_runner(env, policy, num_local_steps, summary_writer, render, predictors,
     """
     last_state = env.reset()
     last_features = policy.get_initial_features()  # reset lstm memory
-    state_memory = [-1]*(horizon-1) + [last_state] # keep track of past states (max prediction horizon deep) 
-    action_memory = [-1]*horizon # keep track of past actions (max prediction horizon deep)
+    state_memory = [last_state] # keep track of past states in an episode
+    action_memory = [] # keep track of past actions in an episode
     length = 0
     rewards = 0
     values = 0
     if len(predictors) != 0:
         ep_bonuses = {h:list() for h in range(horizon)}
+    timestep_limit = env.spec.tags.get('wrapper_config.TimeLimit.max_episode_steps')
+    if timestep_limit is None: timestep_limit = env.spec.timestep_limit
+
+    last_rollout = None # keep the old rollout around so you can finish filling it after 20 timesteps
 
     while True:
         terminal_end = False
         rollout = PartialRollout(len(predictors) != 0)
-        old_rollout = None # keep the old rollout around so you can add the final future prediction rewards
-        rollout_hold_steps = 0 # countdown on extra steps to hold the ready-to-yield rollout (to wait for the extra prediction bonuses to come in)
+        multistep_bonuses = list() # keep track of prediction rewards at each timestep
         for local_step in range(num_local_steps):
-            
+
             # run policy
             fetched = policy.act(last_state, *last_features)
             action, value_, features = fetched[0], fetched[1], fetched[2:]
 
             # run environment: get action_index from sampled one-hot 'action'
             stepAct = action.argmax()
-            action_memory.append(action); action_memory.pop(0) # update action memory
+            action_memory.append(action) # update action memory
             state, reward, terminal, info = env.step(stepAct)
 
             # normalize observations if needed
@@ -259,21 +268,35 @@ def env_runner(env, policy, num_local_steps, summary_writer, render, predictors,
 
             curr_tuple = [last_state, action, reward, value_, terminal, last_features] 
             if len(predictors) != 0:
-                if local_step != 0:
-                    multistep_bonuses.append([None]*horizon) # add a list to collect horizon rewards for this current state in the next iteration
-                else:
-                    multistep_bonuses = [[None]*horizon] # [ [r_1, r_2 ... r_k], ... ] rollouts corresponding to each (s_t, a_t)
 
+                multistep_bonuses.append([None]*horizon) # add a list to collect horizon rewards for last state right now
                 for h in range(horizon): # go through each predictor
-                    if h < local_step+1: # data available to make prediction
+
+                    if last_rollout is not None: # there is an old rollout to fill
                         state_h = state_memory[-(h+1)]
                         action_seq = action_memory[-(h+1):]
                         bonus_h = predictors[h].pred_bonus(state_h, state, np.concatenate(action_seq))
-                        multistep_bonuses[-(h+1)][h] = bonus_h
-                        ep_bonuses[h].append(bonus_h)
+                        if bonus_bound > 0 and bonus_h > bonus_bound:
+                            bonus_h = 0.0
 
-                # if bonus_bound > 0 and bonus > bonus_bound:
-                #     bonus = 0.0
+                        exp_length = len(multistep_bonuses)
+                        if h+1 > exp_length: # add to last rollout
+                            last_rollout.multistep_bonuses[-(h+1-exp_length)][h] = bonus_h
+                            if None not in list(itertools.chain.from_iterable(last_rollout.multistep_bonuses[-horizon:])):  # if last rollout complete, yield it
+                                yield last_rollout
+
+                        else: # add to current rollout
+                            multistep_bonuses[-(h+1)][h] = bonus_h
+
+                    elif h < local_step+1: # first rollout of an episode - fill gradually
+                        state_h = state_memory[-(h+1)]
+                        action_seq = action_memory[-(h+1):]
+                        bonus_h = predictors[h].pred_bonus(state_h, state, np.concatenate(action_seq))
+                        if bonus_bound > 0 and bonus_h > bonus_bound:
+                            bonus_h = 0.0
+                        multistep_bonuses[-(h+1)][h] = bonus_h
+
+                    ep_bonuses[h].append(bonus_h)
 
                 # curr_tuple += [bonus, state, multistep_bonuses]
                 curr_tuple += [0, state, multistep_bonuses]
@@ -285,11 +308,9 @@ def env_runner(env, policy, num_local_steps, summary_writer, render, predictors,
             values += value_[0]
 
             last_state = state
-            state_memory.append(last_state); state_memory.pop(0) # update state memory
+            state_memory.append(last_state) # update state memory
             last_features = features
 
-            timestep_limit = env.spec.tags.get('wrapper_config.TimeLimit.max_episode_steps')
-            if timestep_limit is None: timestep_limit = env.spec.timestep_limit
             if terminal or length >= timestep_limit:
                 # prints summary of each life if envWrap==True else each game
                 print('-'*100)
@@ -298,8 +319,8 @@ def env_runner(env, policy, num_local_steps, summary_writer, render, predictors,
                     for h in range(horizon):
                         print("\t [{}-step prediction] Total bonus: {}".format(h+1, sum(ep_bonuses[h])))
                     multistep_bonuses = [[None]*horizon] # [ [r_1, r_2 ... r_k], ... ] rollouts corresponding to each (s_t, a_t)
-                print('-'*100)
                 if 'distance' in info: print('Mario Distance Covered:', info['distance'])
+
                 length = 0
                 rewards = 0
                 terminal_end = True
@@ -308,8 +329,17 @@ def env_runner(env, policy, num_local_steps, summary_writer, render, predictors,
                 # reset only if it hasn't already reseted
                 if length >= timestep_limit or not env.metadata.get('semantics.autoreset'):
                     last_state = env.reset()
-                    state_memory = [-1]*(horizon-1) + [last_state] # keep track of past states (max prediction horizon deep) 
-                    action_memory = [-1]*horizon # keep track of past actions (max prediction horizon deep)
+                    state_memory = [last_state]
+                    action_memory = []
+
+                    # at the end of the episode, yield whatever rollout was in progress
+                    if horizon != 1:
+                        if len(rollout.actions) >= horizon:
+                            yield rollout
+                        elif len(rollout.actions) < horizon and last_rollout is not None:
+                            last_rollout.extend(rollout, True)
+                            yield last_rollout
+                        last_rollout = None
 
             if info:
                 # summarize full game including all lives (even if envWrap=True)
@@ -341,11 +371,19 @@ def env_runner(env, policy, num_local_steps, summary_writer, render, predictors,
                 ep_bonuses = {h:list() for h in range(horizon)}
                 break
 
+            # trim state/action buffers
+            if len(state_memory) > num_local_steps: # doesn't need to be longer than a full rollout
+                state_memory = state_memory[-num_local_steps:]
+                action_memory = action_memory[-num_local_steps:]
+
         if not terminal_end:
             rollout.r = policy.value(last_state, *last_features)
+            if horizon != 1:
+                last_rollout = rollout # keep old rollout to finish filling it
 
-        # once we have enough experience, yield it, and have the ThreadRunner place it on a queue
-        yield rollout
+        # horizon one - old rollouts are always done before new ones are started, so this is your only chance to yield
+        if horizon == 1:
+            yield rollout
 
 
 class A3C(object):
@@ -572,6 +610,8 @@ class A3C(object):
         and updates the parameters.  The update is then sent to the parameter
         server.
         """
+
+        # COLLECT EXPERIENCE
         sess.run(self.sync)  # copy weights from shared to local
         rollout = self.pull_batch_from_queue()
         batch = process_rollout(rollout, gamma=constants['GAMMA'], lambda_=constants['LAMBDA'], clip=self.envWrap, adv_norm=self.adv_norm, 
@@ -579,11 +619,13 @@ class A3C(object):
         should_compute_summary = self.task == 0 and self.local_steps % 11 == 0
         self.r_std_running = batch.r_std_running
 
+        # DEFINE OPS
         if should_compute_summary:
             fetches = [self.summary_op, self.train_op, self.global_step]
         else:
             fetches = [self.train_op, self.global_step]
 
+        # UPDATE ALL WEIGHTS
         feed_dict = {
             self.local_network.x: batch.si,
             self.ac: batch.a[0],
@@ -603,6 +645,7 @@ class A3C(object):
         fetched = sess.run(fetches, feed_dict=feed_dict)
         if batch.terminal:
             print("Global Step Counter: %d"%fetched[-1])
+            print('-'*100)
 
         if should_compute_summary:
             self.summary_writer.add_summary(tf.Summary.FromString(fetched[0]), fetched[-1])

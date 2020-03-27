@@ -34,14 +34,19 @@ def create_env(env_id, client_id, remotes, **kwargs):
         return create_atari_env(env_id, **kwargs)
 
 def create_doom(env_id, client_id, envWrap=True, record=False, outdir=None,
-                    noLifeReward=False, acRepeat=0, record_frequency=None, **_):
+                    noLifeReward=False, acRepeat=0, record_frequency=None, multi_envs_doom=False, **_):
     import vizdoomgym
 
+    client_id = int(client_id)
+
+    # choose specific Doom map
     if 'labyrinth' in env_id.lower():
         if 'many' in env_id.lower():
             env_id = 'LabyrinthMany-v0'
+        elif multi_envs_doom:
+            env_id = 'LabyrinthRandTx-{}-v0'.format(client_id+1)
         else:
-            env_id = 'LabyrinthRandTx-v0'
+            env_id = 'LabyrinthRandTx-1-v0'
     elif 'very' in env_id.lower():
         env_id = 'VizdoomMyWayHomeFixed15-v0'
     elif 'sparse' in env_id.lower():
@@ -51,7 +56,6 @@ def create_doom(env_id, client_id, envWrap=True, record=False, outdir=None,
 
     # VizDoom workaround: Simultaneously launching multiple vizdoom processes
     # makes program stuck, so use the global lock in multi-threading/processing
-    client_id = int(client_id)
     time.sleep(client_id * 10)
     env = gym.make(env_id)
 

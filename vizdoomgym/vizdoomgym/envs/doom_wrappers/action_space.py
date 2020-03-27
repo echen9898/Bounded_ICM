@@ -22,7 +22,26 @@ ALLOWED_ACTIONS = [
     [13, 14, 15],                               # 13 - LabyrinthManyFixed
     [13, 14, 15],                               # 14 - LabyrinthMany
     [13, 14, 15],                               # 15 - LabyrinthRandTx
-    [13, 14, 15]                                # 16 - LabyrinthRandTx2
+    [13, 14, 15],                               # 16 - LabyrinthRandTx2_1
+    [13, 14, 15],                               # 17 - LabyrinthRandTx2_2
+    [13, 14, 15],                               # 18 - LabyrinthRandTx2_3
+    [13, 14, 15],                               # 19 - LabyrinthRandTx2_4
+    [13, 14, 15],                               # 20 - LabyrinthRandTx2_5
+    [13, 14, 15],                               # 21 - LabyrinthRandTx2_6
+    [13, 14, 15],                               # 22 - LabyrinthRandTx2_7
+    [13, 14, 15],                               # 23 - LabyrinthRandTx2_8
+    [13, 14, 15],                               # 24 - LabyrinthRandTx2_9
+    [13, 14, 15],                               # 25 - LabyrinthRandTx2_10
+    [13, 14, 15],                               # 26 - LabyrinthRandTx2_11
+    [13, 14, 15],                               # 27 - LabyrinthRandTx2_12
+    [13, 14, 15],                               # 28 - LabyrinthRandTx2_13
+    [13, 14, 15],                               # 29 - LabyrinthRandTx2_14
+    [13, 14, 15],                               # 30 - LabyrinthRandTx2_15
+    [13, 14, 15],                               # 31 - LabyrinthRandTx2_16
+    [13, 14, 15],                               # 32 - LabyrinthRandTx2_17
+    [13, 14, 15],                               # 33 - LabyrinthRandTx2_18
+    [13, 14, 15],                               # 34 - LabyrinthRandTx2_19
+    [13, 14, 15]                                # 35 - LabyrinthRandTx2_20
 ]
 
 __all__ = [ 'ToDiscrete', 'ToBox' ]

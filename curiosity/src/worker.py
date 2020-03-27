@@ -55,7 +55,7 @@ def run(args, server):
 
     # Initialize training instance and environment
     env = create_env(args.env_id, client_id=str(args.task), remotes=args.remotes, envWrap=args.envWrap, designHead=args.designHead,
-                        noLifeReward=args.noLifeReward, record=visualise, record_frequency=args.record_frequency, outdir=args.record_dir)
+                        noLifeReward=args.noLifeReward, record=visualise, record_frequency=args.record_frequency, outdir=args.record_dir, multi_envs_doom=args.multi_envs_doom)
     
     trainer = A3C(env, args.task, args.visualise, args.unsup, args.envWrap, args.designHead, args.noReward, args.bonus_bound, args.adv_norm, obs_mean, obs_std, args.rew_norm, args.backup_bound, args.horizon, args.mstep_mode)
 
@@ -193,6 +193,7 @@ Setting up Tensorflow for data parallel work
     parser.add_argument('--backup-bound', type=float, default=-1.0, help="Bound the intrinsic reward discounted sum (backup term) before computing network targets")
     parser.add_argument('--horizon', type=int, default=1, help="Multi-step prediction horizon")
     parser.add_argument('--mstep-mode', type=str, default='sum', help="How to process the multi-step prediction rewards into a single reward (sum, dissum, max)")
+    parser.add_argument('--multi-envs-doom', action='store_true', help='If youre running doom labyrinth, whether or not to train with a different map for each worker')
     args = parser.parse_args()
 
     spec = cluster_spec(args.num_workers, 1, args.psPort)

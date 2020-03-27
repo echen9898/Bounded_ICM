@@ -41,12 +41,14 @@ TRAINING_PARAMS = {
     'rew_norm':False,
     'backup_bound':-1.0,
     'horizon':1,
-    'mstep_mode':'sum'
+    'mstep_mode':'sum',
+    'multi_envs_doom':False
 }
 
 # arguments with 'action = store_true' in train.py
 STORE_TRUE_TRAIN = {'dry_run', 'envWrap', 'noReward', 'noLifeReward', 
-                    'savio', 'default', 'adv_norm', 'obs_norm', 'rew_norm'}
+                    'savio', 'default', 'adv_norm', 'obs_norm', 'rew_norm',
+                    'multi_envs_doom'}
 
 # default arguments for demonstration operations
 DEMO_PARAMS = {
@@ -138,9 +140,10 @@ parser.add_argument('-bonus-bound', type=float, default=-1.0, help='Intrinsic re
 parser.add_argument('-adv-norm', type=bool, default=False, help='Normalize batch advantages after each rollout')
 parser.add_argument('-obs-norm', type=bool, default=False, help='Locally tandardize observations (pixelwise, individually by channel)')
 parser.add_argument('-rew-norm', type=bool, default=False, help='Normalize batch rewards by dividing by running standard deviation')
-parser.add_argument('-backup-bound', type=float, default=-1.0, help="Bound the intrinsic reward discounted sum (backup term) before computing network targets")
-parser.add_argument('-horizon', type=int, default=1, help="Multi-step prediction horizon")
-parser.add_argument('-mstep-mode', type=str, default='sum', help="How to process the multi-step prediction rewards into a single reward (sum, dissum, max)")
+parser.add_argument('-backup-bound', type=float, default=-1.0, help='Bound the intrinsic reward discounted sum (backup term) before computing network targets')
+parser.add_argument('-horizon', type=int, default=1, help='Multi-step prediction horizon')
+parser.add_argument('-mstep-mode', type=str, default='sum', help='How to process the multi-step prediction rewards into a single reward (sum, dissum, max)')
+parser.add_argument('-multi-envs-doom', type=bool, default=False, help='If youre running doom labyrinth, whether or not to train with a different map for each worker')
 
 # DEMO OP ARGUMENTS
 # parser.add_argument('--ckpt', default='../models/doom/doom_ICM', help='Checkpoint name')
