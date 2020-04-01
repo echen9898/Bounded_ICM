@@ -1,5 +1,6 @@
 from __future__ import print_function
 import os, time
+import random
 from PIL import Image
 from gym.spaces.box import Box
 import numpy as np
@@ -38,15 +39,22 @@ def create_doom(env_id, client_id, envWrap=True, record=False, outdir=None,
     import vizdoomgym
 
     client_id = int(client_id)
+    if 1 <= client_id+1 <= 3: map_number = 4
+    elif 4 <= client_id+1 <= 6: map_number = 9
+    elif 7 <= client_id+1 <= 9: map_number = 10
+    elif 10 <= client_id+1 <= 13: map_number = 13
+    elif 14 <= client_id+1 <= 16: map_number = 15
+    else: map_number = 18
 
     # choose specific Doom map
     if 'labyrinth' in env_id.lower():
         if 'many' in env_id.lower():
             env_id = 'LabyrinthMany-v0'
         elif multi_envs_doom:
-            env_id = 'LabyrinthRandTx-{}-v0'.format(client_id+1)
+            env_id = 'LabyrinthRandTx-{}-v0'.format(map_number)
         else:
             env_id = 'LabyrinthRandTx-1-v0'
+        print("LABYRINTH MAP NUMBER: {}".format(env_id))
     elif 'very' in env_id.lower():
         env_id = 'VizdoomMyWayHomeFixed15-v0'
     elif 'sparse' in env_id.lower():
