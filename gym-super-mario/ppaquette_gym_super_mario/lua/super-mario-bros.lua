@@ -158,7 +158,7 @@ function reset_vars()
             screen[x][y] = -1;
         end;
     end;
-    local data_var = { "distance", "life", "score", "coins", "time", "player_status", "is_finished", "iteration" };
+    local data_var = { "distance", "life", "score", "coins", "time", "player_status", "is_finished", "iteration", "page" };
     for i=1,#data_var do
         data[data_var[i]] = -1;
     end;
@@ -356,6 +356,10 @@ function get_distance_perc(current_distance, max_distance)
     return current_perc .. "%";
 end;
 
+function get_page()
+    return memory.readbyte(addr_curr_page);
+end;
+
 -- show_curr_distance - Displays the current distance on the map with percentage
 function show_curr_distance()
     local distance = "Distance " .. curr_x_position;
@@ -363,7 +367,7 @@ function show_curr_distance()
     return emu.message(distance);
 end;
 
--- get_data - Returns the current player stats data (reward, distance, life, scores, coins, timer, player_status, is_finished)
+-- get_data - Returns the current player stats data (reward, distance, life, scores, coins, timer, player_status, is_finished, page)
 -- Only returning values that have changed since last update
 -- Format: data_<frame_number>#name_1:value_1|name_2:value_2|name_3:value_3
 function get_data()
@@ -381,6 +385,7 @@ function get_data()
     local curr_coins = get_coins();
     local curr_time = get_time();
     local curr_player_status = get_player_status();
+    local curr_page = get_page();
     
     -- Checking what values have changed
     if (framecount % send_all_pixels == 0) or (curr_x_position ~= data["distance"]) or (force_refresh > 0) then
@@ -421,6 +426,11 @@ function get_data()
     if (framecount % send_all_pixels == 0) or (iteration ~= data["iteration"]) or (force_refresh > 0) then
         data["iteration"] = iteration;
         data_string = data_string .. "|iteration:" .. iteration;
+        data_count = data_count + 1;
+    end;
+    if (framecount % send_all_pixels == 0) or (curr_page ~= data["page"]) or (force_refresh > 0) then
+        data["page"] = curr_page;
+        data_string = data_string .. "|page:" .. curr_page;
         data_count = data_count + 1;
     end;
 

@@ -30,8 +30,13 @@ def run(args, server):
     virtual_display = Display(visible=0, size=(1400, 900))
     virtual_display.start()
 
-    if args.task != 0: 
-        visualise = False # only record one worker
+    if args.multi_envs_doom:
+        if args.task % 3 == 0:
+            visualise = args.visualise
+        else:
+            visualise = False
+    elif args.task != 0: 
+        visualise = False
     else:
         visualise = args.visualise
 
@@ -193,7 +198,7 @@ Setting up Tensorflow for data parallel work
     parser.add_argument('--backup-bound', type=float, default=-1.0, help="Bound the intrinsic reward discounted sum (backup term) before computing network targets")
     parser.add_argument('--horizon', type=int, default=1, help="Multi-step prediction horizon")
     parser.add_argument('--mstep-mode', type=str, default='sum', help="How to process the multi-step prediction rewards into a single reward (sum, dissum, max)")
-    parser.add_argument('--multi-envs-doom', action='store_true', help='If youre running doom labyrinth, whether or not to train with a different map for each worker')
+    parser.add_argument('--multi-envs-doom', action='store_true', help='If youre running doom labyrinth, whether or not to use different maps to train on')
     args = parser.parse_args()
 
     spec = cluster_spec(args.num_workers, 1, args.psPort)

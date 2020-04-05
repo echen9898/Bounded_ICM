@@ -39,12 +39,9 @@ def create_doom(env_id, client_id, envWrap=True, record=False, outdir=None,
     import vizdoomgym
 
     client_id = int(client_id)
-    if 1 <= client_id+1 <= 3: map_number = 4
-    elif 4 <= client_id+1 <= 6: map_number = 9
-    elif 7 <= client_id+1 <= 9: map_number = 10
-    elif 10 <= client_id+1 <= 13: map_number = 13
-    elif 14 <= client_id+1 <= 16: map_number = 15
-    else: map_number = 18
+    map_number = random.choice([3, 8, 14, 20, 18, 11])
+    if multi_envs_doom:
+        outdir = 'tmp/model/videos/worker{}_map{}'.format(client_id+1, map_number)
 
     # choose specific Doom map
     if 'labyrinth' in env_id.lower():
@@ -54,7 +51,6 @@ def create_doom(env_id, client_id, envWrap=True, record=False, outdir=None,
             env_id = 'LabyrinthRandTx-{}-v0'.format(map_number)
         else:
             env_id = 'LabyrinthRandTx-1-v0'
-        print("LABYRINTH MAP NUMBER: {}".format(env_id))
     elif 'very' in env_id.lower():
         env_id = 'VizdoomMyWayHomeFixed15-v0'
     elif 'sparse' in env_id.lower():
