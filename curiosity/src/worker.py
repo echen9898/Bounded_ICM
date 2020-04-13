@@ -31,7 +31,7 @@ def run(args, server):
     virtual_display.start()
 
     if args.multi_envs_doom:
-        if args.task % 3 == 0:
+        if args.task % 5 == 0:
             visualise = args.visualise
         else:
             visualise = False

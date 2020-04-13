@@ -59,19 +59,20 @@ def process_rollout(rollout, gamma, lambda_=1.0, clip=False, adv_norm=False, r_s
     Given a rollout, compute its returns and the advantage.
     """
 
-    # Zero out all Nones for the multistep predictions
-    rollout.multistep_bonuses = zero_pad_multistep_bonuses(rollout.multistep_bonuses, horizon)
+    if rollout.unsup:
+        # Zero out all Nones for the multistep predictions
+        rollout.multistep_bonuses = zero_pad_multistep_bonuses(rollout.multistep_bonuses, horizon)
 
-    # Processes multistep predictions
-    if horizon == 1: # standard ICM
-        rollout.bonuses = np.concatenate(rollout.multistep_bonuses)
-    else:  # multistep prediction
-        if mstep_mode == 'sum':
-            rollout.bonuses = np.sum(rollout.multistep_bonuses, axis=1) # max, average, discounted sum, whatever you want happens here.
-        elif mstep_mode == 'dissum':
-            rollout.bonuses = np.apply_along_axis(discount, 1, rollout.multistep_bonuses, gamma=constants['MULTISTEP_GAMMA'], trivial=True)
-        elif mstep_mode == 'max':
-            rollout.bonuses = np.max(rollout.multistep_bonuses, axis=1)
+        # Processes multistep predictions
+        if horizon == 1: # standard ICM
+            rollout.bonuses = np.concatenate(rollout.multistep_bonuses)
+        else:  # multistep prediction
+            if mstep_mode == 'sum':
+                rollout.bonuses = np.sum(rollout.multistep_bonuses, axis=1) # max, average, discounted sum, whatever you want happens here.
+            elif mstep_mode == 'dissum':
+                rollout.bonuses = np.apply_along_axis(discount, 1, rollout.multistep_bonuses, gamma=constants['MULTISTEP_GAMMA'], trivial=True)
+            elif mstep_mode == 'max':
+                rollout.bonuses = np.max(rollout.multistep_bonuses, axis=1)
 
     # collecting state transitions
     if rollout.unsup:

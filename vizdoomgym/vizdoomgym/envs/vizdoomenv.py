@@ -14,34 +14,36 @@ CONFIGS = [['basic.cfg', 'basic.wad', 3, 5],                                    
            ['predict_position.cfg', 'predict_position.wad', 3, 3],                 # 6
            ['take_cover.cfg', 'take_cover.wad', 2, 5],                             # 7
            ['deathmatch.cfg', 'deathmatch.wad', 42, 5],                            # 8
+           
            ['my_way_home.cfg', 'my_way_home_sparse.wad', 3, 5],                    # 9
            ['my_way_home.cfg', 'my_way_home_verysparse.wad', 3, 5],                # 10
            ['health_gathering_supreme.cfg', 'health_gathering_supreme.wad', 3, 5], # 11
+
            ['labyrinth.cfg', 'labyrinth_single.wad', 3, 5],                        # 12
            ['labyrinth.cfg', 'labyrinth_many_fixed.wad', 3, 5],                    # 13
            ['labyrinth.cfg', 'labyrinth_many.wad', 3, 5],                          # 14
            ['labyrinth.cfg', 'labyrinth_randtx.wad', 3, 5],                        # 15
-           ['labyrinth1.cfg', 'labyrinth_randtx2.wad', 3, 5],                      # 16
-           ['labyrinth2.cfg', 'labyrinth_randtx2.wad', 3, 5],                      # 17
-           ['labyrinth3.cfg', 'labyrinth_randtx2.wad', 3, 5],                      # 18
-           ['labyrinth4.cfg', 'labyrinth_randtx2.wad', 3, 5],                      # 19
-           ['labyrinth5.cfg', 'labyrinth_randtx2.wad', 3, 5],                      # 20
-           ['labyrinth6.cfg', 'labyrinth_randtx2.wad', 3, 5],                      # 21
-           ['labyrinth7.cfg', 'labyrinth_randtx2.wad', 3, 5],                      # 22
-           ['labyrinth8.cfg', 'labyrinth_randtx2.wad', 3, 5],                      # 23
-           ['labyrinth9.cfg', 'labyrinth_randtx2.wad', 3, 5],                      # 24
-           ['labyrinth10.cfg', 'labyrinth_randtx2.wad', 3, 5],                     # 25
-           ['labyrinth11.cfg', 'labyrinth_randtx2.wad', 3, 5],                     # 26
-           ['labyrinth12.cfg', 'labyrinth_randtx2.wad', 3, 5],                     # 27
-           ['labyrinth13.cfg', 'labyrinth_randtx2.wad', 3, 5],                     # 28
-           ['labyrinth14.cfg', 'labyrinth_randtx2.wad', 3, 5],                     # 29
-           ['labyrinth15.cfg', 'labyrinth_randtx2.wad', 3, 5],                     # 30
-           ['labyrinth16.cfg', 'labyrinth_randtx2.wad', 3, 5],                     # 31
-           ['labyrinth17.cfg', 'labyrinth_randtx2.wad', 3, 5],                     # 32
-           ['labyrinth18.cfg', 'labyrinth_randtx2.wad', 3, 5],                     # 33
-           ['labyrinth19.cfg', 'labyrinth_randtx2.wad', 3, 5],                     # 34
-           ['labyrinth20.cfg', 'labyrinth_randtx2.wad', 3, 5]]                     # 35
 
+           ['labyrinth1.cfg', 'labyrinth_randtx3.wad', 3, 5],                      # 16
+           ['labyrinth2.cfg', 'labyrinth_randtx3.wad', 3, 5],                      # 17
+           ['labyrinth3.cfg', 'labyrinth_randtx3.wad', 3, 5],                      # 18
+           ['labyrinth4.cfg', 'labyrinth_randtx3.wad', 3, 5],                      # 19
+           ['labyrinth5.cfg', 'labyrinth_randtx3.wad', 3, 5],                      # 20
+           ['labyrinth6.cfg', 'labyrinth_randtx3.wad', 3, 5],                      # 21
+           ['labyrinth7.cfg', 'labyrinth_randtx3.wad', 3, 5],                      # 22
+           ['labyrinth8.cfg', 'labyrinth_randtx3.wad', 3, 5],                      # 23
+           ['labyrinth9.cfg', 'labyrinth_randtx3.wad', 3, 5],                      # 24
+           ['labyrinth10.cfg', 'labyrinth_randtx3.wad', 3, 5],                     # 25
+           ['labyrinth11.cfg', 'labyrinth_randtx3.wad', 3, 5],                     # 26
+           ['labyrinth12.cfg', 'labyrinth_randtx3.wad', 3, 5],                     # 27
+           ['labyrinth13.cfg', 'labyrinth_randtx3.wad', 3, 5],                     # 28
+           ['labyrinth14.cfg', 'labyrinth_randtx3.wad', 3, 5],                     # 29
+           ['labyrinth15.cfg', 'labyrinth_randtx3.wad', 3, 5],                     # 30
+           ['labyrinth16.cfg', 'labyrinth_randtx3.wad', 3, 5],                     # 31
+           ['labyrinth17.cfg', 'labyrinth_randtx3.wad', 3, 5],                     # 32
+           ['labyrinth18.cfg', 'labyrinth_randtx3.wad', 3, 5],                     # 33
+           ['labyrinth19.cfg', 'labyrinth_randtx3.wad', 3, 5],                     # 34
+           ['labyrinth20.cfg', 'labyrinth_randtx3.wad', 3, 5]]                     # 35
 
 # Maps actions from deprecated ppaquette package to new vizdoom environment
 my_way_home_map = {13:[1, 0, 0, 0], 14:[0, 1, 0, 0], 15:[0, 0, 1, 0], 'noop':[0, 0, 0, 1]} 

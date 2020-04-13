@@ -39,7 +39,7 @@ def create_doom(env_id, client_id, envWrap=True, record=False, outdir=None,
     import vizdoomgym
 
     client_id = int(client_id)
-    map_number = random.choice([3, 8, 14, 20, 18, 11])
+    map_number = random.choice([2, 5, 10, 12, 15, 19])
     if multi_envs_doom:
         outdir = 'tmp/model/videos/worker{}_map{}'.format(client_id+1, map_number)
 
