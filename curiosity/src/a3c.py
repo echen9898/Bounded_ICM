@@ -2,7 +2,7 @@ from __future__ import print_function
 from collections import namedtuple
 import numpy as np
 import tensorflow as tf
-from model import LSTMPolicy, StateActionPredictor, StatePredictor
+from model import LSTMPolicy, StateActionPredictor, LSTMPredictor, StatePredictor
 import six.moves.queue as queue
 import scipy.signal
 import threading
@@ -183,7 +183,7 @@ class RunnerThread(threading.Thread):
     that would constantly interact with the environment and tell it what to do.  This thread is here.
     """
     def __init__(self, env, policy, num_local_steps, visualise, predictors, envWrap,
-                    noReward, bonus_bound, obs_mean, obs_std, horizon):
+                    noReward, bonus_bound, obs_mean, obs_std, horizon, unsup):
         threading.Thread.__init__(self)
         self.queue = queue.Queue(5)  # ideally, should be 1. Mostly doesn't matter in our case.
         self.num_local_steps = num_local_steps
@@ -201,6 +201,7 @@ class RunnerThread(threading.Thread):
         self.obs_mean = obs_mean
         self.obs_std = obs_std
         self.horizon = horizon
+        self.unsup = unsup
 
     def start_runner(self, sess, summary_writer):
         self.sess = sess
@@ -215,7 +216,7 @@ class RunnerThread(threading.Thread):
         rollout_provider = env_runner(self.env, self.policy, self.num_local_steps,
                                         self.summary_writer, self.visualise, self.predictors,
                                         self.envWrap, self.noReward, self.bonus_bound, self.obs_mean,
-                                        self.obs_std, self.horizon)
+                                        self.obs_std, self.horizon, self.unsup)
         while True:
             # the timeout variable exists because apparently, if one worker dies, the other workers
             # won't die with it, unless the timeout is set to some large number.  This is an empirical
@@ -223,7 +224,7 @@ class RunnerThread(threading.Thread):
             self.queue.put(next(rollout_provider), timeout=600.0)
 
 def env_runner(env, policy, num_local_steps, summary_writer, render, predictors,
-                envWrap, noReward, bonus_bound, obs_mean, obs_std, horizon):
+                envWrap, noReward, bonus_bound, obs_mean, obs_std, horizon, unsup):
     """
     The logic of the thread runner.  In brief, it constantly keeps on running
     the policy, and as long as the rollout exceeds a certain length, the thread
@@ -268,39 +269,80 @@ def env_runner(env, policy, num_local_steps, summary_writer, render, predictors,
                 env.render()
 
             curr_tuple = [last_state, action, reward, value_, terminal, last_features] 
-            if len(predictors) != 0:
+
+            if unsup is not None:
 
                 multistep_bonuses.append([None]*horizon) # add a list to collect horizon rewards for last state right now
-                for h in range(horizon): # go through each predictor
 
-                    if last_rollout is not None: # there is an old rollout to fill
-                        state_h = state_memory[-(h+1)]
-                        action_seq = action_memory[-(h+1):]
-                        bonus_h = predictors[h].pred_bonus(state_h, state, np.concatenate(action_seq))
-                        if bonus_bound > 0 and bonus_h > bonus_bound:
-                            bonus_h = 0.0
+                if unsup == 'action_lstm':
+                    if last_rollout is not None:
+                        s1_in = state_memory[-(horizon+1):]
+                        s2_in = state_memory[-horizon:] + [state]
+                        actions_in = action_memory[-(horizon+1):]
 
                         exp_length = len(multistep_bonuses)
-                        if h+1 > exp_length: # add to last rollout
-                            last_rollout.multistep_bonuses[-(h+1-exp_length)][h] = bonus_h
-                            if None not in list(itertools.chain.from_iterable(last_rollout.multistep_bonuses[-horizon:])):  # if last rollout complete, yield it
-                                yield last_rollout
-
+                        if horizon+1 > exp_length: # add to last rollout
+                            last_rollout.multistep_bonuses[-(horizon+1-exp_length)] = predictors.pred_bonus(s1_in, s2_in, actions_in)
                         else: # add to current rollout
+                            multistep_bonuses[-(horizon+1)] = predictors.pred_bonus(s1_in, s2_in, actions_in)
+
+                    if terminal or length >= timestep_limit: # need to fill in what you can
+                        if last_rollout is None:
+                            if horizon > len(multistep_bonuses): steps = len(multistep_bonuses)
+                            else: steps = horizon
+                            for h in range(steps):
+                                s1_in = state_memory[-(h+1):] + [np.zeros(state.shape)]*(horizon-(h+1)) # pad remainder with enough zeros
+                                s2_in = state_memory[-h:] + [state] + [np.zeros(state.shape)]*(horizon-(h+1))
+                                actions_in = action_memory[-(horizon+1):] + [np.zeros(action.shape)]*(horizon-(h+1))
+                                bonuses = predictors.pred_bonus(s1_in, s2_in, actions_in)
+                                multistep_bonuses[-(h+1)] = bonuses[:horizon-(h+1)] + [0.0]*(horizon-(h+1))
+                        else:
+
+                            if horizon > len(multistep_bonuses): # horizon number of bonus sets left to fill
+                                return
+
+                else:
+                    for h in range(horizon): # go through each predictor
+
+                        if last_rollout is not None: # there is an old rollout to fill
+                            state_h = state_memory[-(h+1)]
+                            action_seq = action_memory[-(h+1):]
+                            bonus_h = predictors[h].pred_bonus(state_h, state, np.concatenate(action_seq))
+                            if bonus_bound > 0 and bonus_h > bonus_bound:
+                                bonus_h = 0.0
+
+                            exp_length = len(multistep_bonuses)
+                            if h+1 > exp_length: # add to last rollout
+                                last_rollout.multistep_bonuses[-(h+1-exp_length)][h] = bonus_h
+                                if None not in list(itertools.chain.from_iterable(last_rollout.multistep_bonuses[-horizon:])):  # if last rollout complete, yield it
+                                    yield last_rollout
+
+                            else: # add to current rollout
+                                multistep_bonuses[-(h+1)][h] = bonus_h
+
+                        elif h < local_step+1: # first rollout of an episode - fill gradually
+                            state_h = state_memory[-(h+1)]
+                            action_seq = action_memory[-(h+1):]
+                            bonus_h = predictors[h].pred_bonus(state_h, state, np.concatenate(action_seq))
+                            if bonus_bound > 0 and bonus_h > bonus_bound:
+                                bonus_h = 0.0
                             multistep_bonuses[-(h+1)][h] = bonus_h
 
-                    elif h < local_step+1: # first rollout of an episode - fill gradually
-                        state_h = state_memory[-(h+1)]
-                        action_seq = action_memory[-(h+1):]
-                        bonus_h = predictors[h].pred_bonus(state_h, state, np.concatenate(action_seq))
-                        if bonus_bound > 0 and bonus_h > bonus_bound:
-                            bonus_h = 0.0
-                        multistep_bonuses[-(h+1)][h] = bonus_h
-
-                    ep_bonuses[h].append(bonus_h)
+                        ep_bonuses[h].append(bonus_h)
 
                 # curr_tuple += [bonus, state, multistep_bonuses]
                 curr_tuple += [0, state, multistep_bonuses]
+
+
+
+
+
+
+
+
+
+
+
 
             # collect the experience
             rollout.add(*curr_tuple)
@@ -411,10 +453,14 @@ class A3C(object):
         self.mstep_mode = mstep_mode
 
         # broadcast multistep mode
-        if self.horizon == 1:
-            print('FORWARD MODEL SETUP: 1 step prediction')
-        else:
-            print('FORWARD MODEL SETUP: {} step prediction, with mode {}'.format(self.horizon, self.mstep_mode))
+        if unsupType is not None:
+            if self.horizon == 1: 
+                if unsupType == 'action': print('FORWARD MODEL SETUP: 1 step feedforward prediction')
+                elif unsupType == 'action_lstm': print('FORWARD MODEL SETUP: 1 step LSTM prediction')
+            else:
+                if unsupType == 'action': print('FORWARD MODEL SETUP: {} step feedforward prediction, with mode {}'.format(self.horizon, self.mstep_mode))
+                elif unsupType == 'action_lstm': print('FORWARD MODEL SETUP: {} step LSTM prediction, with mode {}'.format(self.horizon, self.mstep_mode))
+                
 
         # initialize forward/inverse models central server parameters
         predictors = list()
@@ -424,17 +470,20 @@ class A3C(object):
         with tf.device(tf.train.replica_device_setter(1, worker_device=worker_device)):
             with tf.variable_scope("global"):
                 self.network = LSTMPolicy(env.observation_space.shape, numaction, designHead)
-                self.global_step = tf.get_variable("global_step", [], tf.int32, initializer=tf.constant_initializer(0, dtype=tf.int32),
-                                                   trainable=False)
+                self.global_step = tf.get_variable("global_step", [], tf.int32, initializer=tf.constant_initializer(0, dtype=tf.int32), trainable=False)
                 if self.unsup:
-                    self.ap_network = dict()
-                    for h in range(self.horizon):
-                        with tf.variable_scope("predictor_{}".format(h+1)):
-                            if 'state' in unsupType:
-                                self.ap_network = StatePredictor(env.observation_space.shape, numaction, designHead, unsupType)
-                            else:
-                                # self.ap_network = StateActionPredictor(env.observation_space.shape, numaction, designHead, self.horizon)
-                                self.ap_network[h] = StateActionPredictor(env.observation_space.shape, numaction, designHead, h+1)
+                    if unsupType == 'action_lstm':
+                        with tf.variable_scope("predictor"):
+                            self.ap_network = LSTMPredictor(env.observation_space.shape, numaction, designHead, self.horizon)
+                    else:
+                        self.ap_network = dict()
+                        for h in range(self.horizon):
+                            with tf.variable_scope("predictor_{}".format(h+1)):
+                                if 'state' in unsupType:
+                                    self.ap_network[h] = StatePredictor(env.observation_space.shape, numaction, designHead, unsupType, h+1)
+                                else:
+                                    # self.ap_network = StateActionPredictor(env.observation_space.shape, numaction, designHead, self.horizon)
+                                    self.ap_network[h] = StateActionPredictor(env.observation_space.shape, numaction, designHead, h+1)
 
         # initialize forward/inverse models local worker parameters
         with tf.device(worker_device):
@@ -442,15 +491,21 @@ class A3C(object):
                 self.local_network = pi = LSTMPolicy(env.observation_space.shape, numaction, designHead)
                 pi.global_step = self.global_step
                 if self.unsup:
-                    self.local_ap_network = dict()
-                    for h in range(self.horizon):
-                        with tf.variable_scope("predictor_{}".format(h+1)):
-                            if 'state' in unsupType:
-                                self.local_ap_network = predictor = StatePredictor(env.observation_space.shape, numaction, designHead, unsupType)
-                            else:
-                                # self.local_ap_network = predictor = StateActionPredictor(env.observation_space.shape, numaction, designHead, self.horizon)
-                                self.local_ap_network[h] = predictor = StateActionPredictor(env.observation_space.shape, numaction, designHead, h+1)
-                                predictors.append(predictor)
+                    if unsupType == 'action_lstm':
+                        with tf.variable_scope("predictor"):
+                            self.local_ap_network = predictor = LSTMPredictor(env.observation_space.shape, numaction, designHead, self.horizon)
+                            predictors.append(predictor)
+                    else:
+                        self.local_ap_network = dict()
+                        for h in range(self.horizon):
+                            with tf.variable_scope("predictor_{}".format(h+1)):
+                                if 'state' in unsupType:
+                                    self.local_ap_network[h] = predictor = StatePredictor(env.observation_space.shape, numaction, designHead, unsupType, h+1)
+                                    predictors.append(predictor)
+                                else:
+                                    # self.ap_network = StateActionPredictor(env.observation_space.shape, numaction, designHead, self.horizon)
+                                    self.local_ap_network[h] = predictor = StateActionPredictor(env.observation_space.shape, numaction, designHead, h+1)
+                                    predictors.append(predictor)
 
             # Computing a3c loss: https://arxiv.org/abs/1506.02438
             self.ac = tf.placeholder(tf.float32, [None, numaction], name="ac")
@@ -477,16 +532,25 @@ class A3C(object):
 
             # computing predictor loss
             if self.unsup:
-                if 'state' in unsupType:
-                    self.predloss = constants['PREDICTION_LR_SCALE'] * predictor.forwardloss
-                    predgrads = tf.gradients(self.predloss * constants['ROLLOUT_MAXLEN'], predictor.var_list)  # batchsize=ROLLOUT MAXLENGTH. Factored out to make hyperparams not depend on it.
+
+                if unsupType == 'action_lstm':
+                    self.predlosses = self.local_ap_network.forwardloss * constants['PREDICTION_LR_SCALE']
+                    predgrads = tf.gradients(self.predlosses * constants['ROLLOUT_MAXLEN'], self.local_ap_network.var_list)
+
+                elif 'state' in unsupType:
+                    self.predlosses = [0.0]*horizon
+                    predgrads = [0.0]*horizon
+                    for h in range(horizon):
+                        predictor = predictors[h]
+                        self.predlosses[h] = constants['PREDICTION_LR_SCALE'] * predictor.forwardloss
+                        predgrads[h] = tf.gradients(self.predlosses[h] * constants['ROLLOUT_MAXLEN'], predictor.var_list)  # batchsize=ROLLOUT MAXLENGTH. Factored out to make hyperparams not depend on it.
+                
                 else:
                     self.predlosses = [0.0]*horizon # prediction losses for each network
                     predgrads = [0.0]*horizon # prediction gradients for each network
                     for h in range(horizon):
                         predictor = predictors[h]
-                        self.predlosses[h] = constants['PREDICTION_LR_SCALE'] * (predictor.invloss * (1-constants['FORWARD_LOSS_WT']) +
-                                                                    predictor.forwardloss * constants['FORWARD_LOSS_WT'])
+                        self.predlosses[h] = constants['PREDICTION_LR_SCALE'] * (predictor.invloss * (1-constants['FORWARD_LOSS_WT']) + predictor.forwardloss * constants['FORWARD_LOSS_WT'])
                         predgrads[h] = tf.gradients(self.predlosses[h] * constants['ROLLOUT_MAXLEN'], predictor.var_list)  # batchsize=ROLLOUT MAXLENGTH. Factored out to make hyperparams not depend on it.
 
                 # do not backprop to policy
@@ -496,7 +560,7 @@ class A3C(object):
 
 
             self.runner = RunnerThread(env, pi, constants['ROLLOUT_MAXLEN'], visualise,
-                                        predictors, envWrap, noReward, bonus_bound, obs_mean, obs_std, horizon)
+                                        predictors, envWrap, noReward, bonus_bound, obs_mean, obs_std, horizon, unsupType)
 
             # storing summaries
             bs = tf.to_float(tf.shape(pi.x)[0])
@@ -512,13 +576,20 @@ class A3C(object):
                 if self.unsup:
                     for h in range(horizon):
                         tf.summary.scalar("model/predloss_{}".format(h+1), self.predlosses[h])
-                    if 'action' in unsupType:
+                    if unsupType == 'action':
                         for h in range(horizon):
                             predictor = predictors[h]
                             tf.summary.scalar("model/inv_loss_{}".format(h+1), predictor.invloss)
                             tf.summary.scalar("model/forward_loss_{}".format(h+1), predictor.forwardloss)
                             tf.summary.scalar("model/predgrad_global_norm_{}".format(h+1), tf.global_norm(predgrads[h]))
                             tf.summary.scalar("model/predvar_global_norm_{}".format(h+1), tf.global_norm(predictor.var_list))
+                    elif unsupType == 'action_lstm':
+                        tf.summary.scalar("model/inv_loss", self.local_ap_network.invloss)
+                        tf.summary.scalar("model/predgrad_global_norm", tf.global_norm(predgrads))
+                        for h in range(horizon):
+                            tf.summary.scalar("model/forward_loss_{}".format(h+1), self.local_ap_network.forwardloss[h])
+                            # tf.summary.scalar("model/predvar_global_norm_{}".format(h+1), tf.global_norm(self.local_ap_network.var_list))
+                        
                 # if self.task == 0 and self.local_steps % 25800 == 0:
                 #     tf.summary.histogram('global/vpreds', self.vpreds)
                 #     tf.summary.histogram('global/advantages', self.adv)
@@ -535,26 +606,39 @@ class A3C(object):
                 if self.unsup:
                     for h in range(horizon):
                         tf.scalar_summary("model/predloss_{}".format(h+1), self.predlosses[h])
-                    if 'action' in unsupType:
+                    if unsupType == 'action':
                         for h in range(horizon):
                             predictor = predictors[h]
                             tf.scalar_summary("model/inv_loss_{}".format(h+1), predictor.invloss)
                             tf.scalar_summary("model/forward_loss_{}".format(h+1), predictor.forwardloss)
                             tf.scalar_summary("model/predgrad_global_norm_{}".format(h+1), tf.global_norm(predgrads[h]))
                             tf.scalar_summary("model/predvar_global_norm_{}".format(h+1), tf.global_norm(predictor.var_list))
+                    elif unsupType == 'action_lstm':
+                        tf.scalar_summary("model/inv_loss", self.local_ap_network.invloss)
+                        tf.scalar_summary("model/predgrad_global_norm", tf.global_norm(predgrads))
+                        for h in range(horizon):
+                            tf.scalar_summary("model/forward_loss_{}".format(h+1), self.local_ap_network.forwardloss[h])
+                            # tf.scalar_summary("model/predvar_global_norm_{}".format(h+1), tf.global_norm(self.local_ap_network.var_list))
+
                 # if self.task == 0 and self.local_steps % 25800 == 0:
                 #     tf.histogram_summary('global/vpreds', self.vpreds)
                 #     tf.histogram_summary('global/advantages', self.adv)
                 self.summary_op = tf.merge_all_summaries()
 
+
             # clip gradients
             grads, _ = tf.clip_by_global_norm(grads, constants['GRAD_NORM_CLIP'])
             grads_and_vars = list(zip(grads, self.network.var_list))
             if self.unsup:
-                for h in range(horizon):
-                    predgrads[h], _ = tf.clip_by_global_norm(predgrads[h], constants['GRAD_NORM_CLIP'])
-                    pred_grads_and_vars = list(zip(predgrads[h], self.ap_network[h].var_list))
+                if unsupType == 'action_lstm':
+                    predgrads, _ = tf.clip_by_global_norm(predgrads, constants['GRAD_NORM_CLIP'])
+                    pred_grads_and_vars = list(zip(predgrads, self.ap_network.var_list))
                     grads_and_vars = grads_and_vars + pred_grads_and_vars
+                else:
+                    for h in range(horizon):
+                        predgrads[h], _ = tf.clip_by_global_norm(predgrads[h], constants['GRAD_NORM_CLIP'])
+                        pred_grads_and_vars = list(zip(predgrads[h], self.ap_network[h].var_list))
+                        grads_and_vars = grads_and_vars + pred_grads_and_vars
 
             # update global step by batch size
             inc_step = self.global_step.assign_add(tf.shape(pi.x)[0])
@@ -562,16 +646,19 @@ class A3C(object):
             # each worker has a different set of adam optimizer parameters
             # TODO: make optimizer global shared, if needed
             print("Optimizer: ADAM with lr: %f" % (constants['LEARNING_RATE']))
-            print("Input observation shape: ",env.observation_space.shape)
+            print("Input observation shape: ", env.observation_space.shape)
             opt = tf.train.AdamOptimizer(constants['LEARNING_RATE'])
             self.train_op = tf.group(opt.apply_gradients(grads_and_vars), inc_step)
 
             # copy weights from the parameter server to the local model
             sync_var_list = [v1.assign(v2) for v1, v2 in zip(pi.var_list, self.network.var_list)]
             if self.unsup:
-                for h in range(horizon):
-                    predictor = predictors[h]
-                    sync_var_list += [v1.assign(v2) for v1, v2 in zip(predictor.var_list, self.ap_network[h].var_list)]
+                if unsupType == 'action_lstm':
+                    sync_var_list += [v1.assign(v2) for v1, v2 in zip(self.local_ap_network.var_list, self.ap_network.var_list)]
+                else:
+                    for h in range(horizon):
+                        predictor = predictors[h]
+                        sync_var_list += [v1.assign(v2) for v1, v2 in zip(predictor.var_list, self.ap_network[h].var_list)]
             self.sync = tf.group(*sync_var_list)
 
             # initialize extras

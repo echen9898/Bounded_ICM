@@ -289,15 +289,6 @@ class StateActionPredictor(object):
         # variable list
         self.var_list = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, tf.get_variable_scope().name)
 
-    def pred_act(self, s1, s2):
-        '''
-        returns action probability distribution predicted by inverse model
-            input: s1,s2: [h, w, ch]
-            output: ainvprobs: [ac_space]
-        '''
-        sess = tf.get_default_session()
-        return sess.run(self.ainvprobs, {self.s1: [s1], self.s2: [s2]})[0, :]
-
     def pred_bonus(self, s1, s2, asample):
         '''
         returns bonus predicted by forward model
@@ -314,6 +305,107 @@ class StateActionPredictor(object):
         return error
 
 
+class LSTMPredictor(object):
+    def __init__(self, ob_space, ac_space, designHead='universe', horizon=1):
+        # input: s1,s2: : [None, h, w, ch] (usually ch=1 or 4)
+        # asample: 1-hot encoding of sampled action from policy: [None, ac_space]
+        input_shape = [None] + list(ob_space)
+
+        # state inputs for forard or inverse model
+        self.s1 = phi1 = tf.placeholder(tf.float32, input_shape)
+        self.s2 = phi2 = tf.placeholder(tf.float32, input_shape)
+
+        # action input for forward model
+        self.asample = asample = tf.placeholder(tf.float32, [None, ac_space])
+
+        # feature encoding: phi1, phi2: [None, LEN]
+        size = 256
+        if designHead == 'nips':
+            phi1 = nipsHead(phi1)
+            with tf.variable_scope(tf.get_variable_scope(), reuse=True):
+                phi2 = nipsHead(phi2)
+        elif designHead == 'nature':
+            phi1 = natureHead(phi1)
+            with tf.variable_scope(tf.get_variable_scope(), reuse=True):
+                phi2 = natureHead(phi2)
+        elif designHead == 'doom':
+            phi1 = doomHead(phi1)
+            with tf.variable_scope(tf.get_variable_scope(), reuse=True):
+                phi2 = doomHead(phi2)
+        elif 'tile' in designHead:
+            phi1 = universeHead(phi1, nConvs=2)
+            with tf.variable_scope(tf.get_variable_scope(), reuse=True):
+                phi2 = universeHead(phi2, nConvs=2)
+        else:
+            phi1 = universeHead(phi1)
+            with tf.variable_scope(tf.get_variable_scope(), reuse=True):
+                phi2 = universeHead(phi2)
+
+        # INVERSE MODEL: g(phi1,phi2) -> a_inv: [None, ac_space]
+        g = tf.concat(1,[phi1, phi2])
+        g = tf.nn.relu(linear(g, size, "g1", normalized_columns_initializer(0.01)))
+        aindex = tf.argmax(asample, axis=1)  # aindex: [batch_size,]
+        logits = linear(g, ac_space, "glast", normalized_columns_initializer(0.01))
+        self.invloss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(
+                                        logits, aindex), name="invloss")
+        self.ainvprobs = tf.nn.softmax(logits, dim=-1)
+
+        # FORWARD MODEL: (phi1 + asample) -> [LSTM] -> phi2
+        # Note: no backprop to asample of policy: it is treated as fixed for predictor training
+        x = tf.concat(1, [phi1, asample]) # result is [horizon, 288 + one_hot_action] where 288 is the length of feature vector phi1
+        x = tf.expand_dims(x, [0]) # introduce a "fake" batch dimension of 1 to do LSTM over time dim -> [1, horizon, 288 + one_hot_action]
+        batch_size = tf.shape(x)[:1]
+
+        # initialize individual lstm cells
+        lstm_cell = rnn.rnn_cell.BasicLSTMCell(constants['LSTM_PREDICTOR_NUM_UNITS'], state_is_tuple=True)
+        self.state_size = lstm_cell.state_size
+
+        # initialize hidden state
+        c_init = np.zeros((1, lstm_cell.state_size.c), np.float32)
+        h_init = np.zeros((1, lstm_cell.state_size.h), np.float32)
+        self.state_init = [c_init, h_init]
+
+        # lstm hidden state placeholders
+        c_in = tf.placeholder(tf.float32, [1, lstm_cell.state_size.c], name='c_in')
+        h_in = tf.placeholder(tf.float32, [1, lstm_cell.state_size.h], name='h_in')
+        self.state_in = [c_in, h_in]
+
+        # unroll lstm
+        state_in = rnn.rnn_cell.LSTMStateTuple(c_in, h_in)
+        lstm_outputs, lstm_state = tf.nn.dynamic_rnn(lstm_cell, x, initial_state=state_in, sequence_length=batch_size, time_major=False)
+        lstm_c, lstm_h = lstm_state
+        lstm_outputs = tf.reshape(lstm_outputs, [horizon, 288])# should be [1, horizon, 288]
+        self.state_out = [lstm_c[:1, :], lstm_h[:1, :]]
+
+        # compute loss 
+        self.forwardloss = 0.5 * tf.reduce_mean(tf.square(tf.subtract(lstm_outputs, phi2)), axis=1)
+        self.forwardloss = self.forwardloss * 288.0 # lenFeatures=288. Factored out to make hyperparams not depend on it.
+
+        # variable list
+        self.var_list = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, tf.get_variable_scope().name)
+
+    def pred_act(self, s1, s2):
+        '''
+        returns action probability distribution predicted by inverse model
+            input: s1,s2 shapes: (h, w, ch)
+            output: ainvprobs: [ac_space]
+        '''
+        sess = tf.get_default_session()
+        return sess.run(self.ainvprobs, {self.s1: [s1], self.s2: [s2]})[0, :]
+
+    def pred_bonus(self, s1, s2, asample):
+        '''
+        returns bonus predicted by forward model
+            input: s1,s2 shapes: (horizon, h, w, ch), asample shape: (horizon, ac_space) where ac_space is 1-hot encoding
+            output: (horizon, scalar bonuses)
+        '''
+        sess = tf.get_default_session()
+        errors = sess.run(self.forwardloss,
+            {self.s1: [s1], self.s2: [s2], self.asamples: [asample]})
+        errors = errors * constants['PREDICTION_BETA'] # multiply element wise
+        return errors
+
+
 class StatePredictor(object):
     '''
     Loss is normalized across spatial dimension (42x42), but not across batches.
@@ -321,13 +413,13 @@ class StatePredictor(object):
     and neither across batches.
     '''
 
-    def __init__(self, ob_space, ac_space, designHead='universe', unsupType='state'):
+    def __init__(self, ob_space, ac_space, designHead='universe', unsupType='state', horizon=1):
         # input: s1,s2: : [None, h, w, ch] (usually ch=1 or 4)
         # asample: 1-hot encoding of sampled action from policy: [None, ac_space]
         input_shape = [None] + list(ob_space)
         self.s1 = phi1 = tf.placeholder(tf.float32, input_shape)
         self.s2 = phi2 = tf.placeholder(tf.float32, input_shape)
-        self.asample = asample = tf.placeholder(tf.float32, [None, ac_space])
+        self.asample = asample = tf.placeholder(tf.float32, [None, ac_space*horizon])
         self.stateAenc = unsupType == 'stateAenc'
 
         # feature encoding: phi1: [None, LEN]

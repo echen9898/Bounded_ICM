@@ -19,7 +19,7 @@ parser.add_argument('-m', '--mode', type=str, default='tmux', help="tmux: run wo
 parser.add_argument('--visualise', type=bool, default=True, help="Visualise the gym environment by running env.render() between each timestep")
 parser.add_argument('--envWrap', action='store_true', help="Preprocess input in env_wrapper (no change in input size or network)")
 parser.add_argument('--designHead', type=str, default='universe', help="Network deign head: nips or nature or doom or universe(default)")
-parser.add_argument('--unsup', type=str, default=None, help="Unsup. exploration mode: action or state or stateAenc or None")
+parser.add_argument('--unsup', type=str, default=None, help="Unsup. exploration mode: action or action_lstm or state or stateAenc or None")
 parser.add_argument('--noReward', action='store_true', help="Remove all extrinsic reward")
 parser.add_argument('--noLifeReward', action='store_true', help="Remove all negative reward (in doom: it is living reward)")
 parser.add_argument('--expName', type=str, default='a3c', help="Experiment tmux session-name. Default a3c.")

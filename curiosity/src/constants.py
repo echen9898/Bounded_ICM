@@ -21,4 +21,5 @@ constants = {
 'FORWARD_LOSS_WT': 0.2,  # should be between [0,1]
                           # predloss = ( (1-FORWARD_LOSS_WT) * inv_loss + FORWARD_LOSS_WT * forward_loss) * PREDICTION_LR_SCALE
 'POLICY_NO_BACKPROP_STEPS': 0,  # number of global steps after which we start backpropagating to policy
+'LSTM_PREDICTOR_NUM_UNITS': 288 # number of units in each cell of the LSTM Predictor network (should be action encoding feature vector length)
 }

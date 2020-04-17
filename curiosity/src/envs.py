@@ -42,7 +42,7 @@ def create_doom(env_id, client_id, envWrap=True, record=False, outdir=None,
     map_number = random.choice([2, 5, 10, 12, 15, 19])
     if multi_envs_doom:
         outdir = 'tmp/model/videos/worker{}_map{}'.format(client_id+1, map_number)
-
+        
     # choose specific Doom map
     if 'labyrinth' in env_id.lower():
         if 'many' in env_id.lower():

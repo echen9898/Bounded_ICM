@@ -17,7 +17,7 @@ COLS = {
 
 # row indexes of interest
 ROWS = {
-    'header':23
+    'header':30
 }
 
 # dictionary of custom styles
@@ -133,6 +133,7 @@ def create_usertag(args):
         # Algorithm choice (none, icm, icmpix)
         if args.unsup == None: algo = 'none'
         elif args.unsup == 'action': algo = 'icm'
+        elif args.unsup == 'action_lstm': algo = 'lstmpred'
         elif 'state' in args.unsup.lower(): algo = 'icmpix'
 
         # Reward setting (dense, sparse, verySparse)
