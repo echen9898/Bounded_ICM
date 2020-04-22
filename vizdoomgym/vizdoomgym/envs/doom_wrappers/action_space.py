@@ -41,7 +41,15 @@ ALLOWED_ACTIONS = [
     [13, 14, 15],                               # 32 - LabyrinthRandTx2_17
     [13, 14, 15],                               # 33 - LabyrinthRandTx2_18
     [13, 14, 15],                               # 34 - LabyrinthRandTx2_19
-    [13, 14, 15]                                # 35 - LabyrinthRandTx2_20
+    [13, 14, 15],                               # 35 - LabyrinthRandTx2_20
+    [13, 14, 15],                               # 36 - LabyrinthManyFixed_4
+    [13, 14, 15],                               # 37 - LabyrinthManyFixed_5
+    [13, 14, 15],                               # 38 - LabyrinthManyFixed_6
+    [13, 14, 15],                               # 39 - LabyrinthManyFixed_7
+    [13, 14, 15],                               # 40 - LabyrinthManyFixed_8
+    [13, 14, 15],                               # 41 - LabyrinthManyFixed_9
+    [13, 14, 15],                               # 42 - LabyrinthManyFixed_10
+    [13, 14, 15]                                # 43 - LabyrinthManyFixed_11
 ]
 
 __all__ = [ 'ToDiscrete', 'ToBox' ]

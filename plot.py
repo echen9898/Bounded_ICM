@@ -26,6 +26,7 @@ parser.add_argument('--x-increment', type=int, default=10000, help='Spacing betw
 parser.add_argument('--left-x', type=int, default=0, help='Leftmost x-axis value (timestep usually).')
 parser.add_argument('--right-x', type=int, default=10000000, help='Rightmost x-axis value (timestep usually).')
 parser.add_argument('--span', type=float, default=150.0, help='Smoothing parameter for EWMA. 150 for Doom, 500 for Mario is safe.')
+parser.add_argument('--histogram', default=False, help='Whether or not youre plotting reward histogram')
 
 # ------------------------------------------- STYLING ------------------------------------------- #
 def print_groups(groupobject):
@@ -56,7 +57,10 @@ def style(args):
     fig = plt.gcf()
     ax = plt.gca()
     sb.set(font='sans')
-    plt.xlabel('Training Steps (millions)')
+    if args.histogram != False:
+        plt.xlabel('Intrinsic Rewards')
+    else:
+        plt.xlabel('Training Steps (millions)')
     y_label = args.y_axis.split('/')[-1]
     y_label = ' '.join(y_label.split('_')).capitalize()
     plt.ylabel(y_label)
@@ -107,9 +111,12 @@ def extract_data(usertag, tags, args):
         for event in events:
             ea = event_accumulator.EventAccumulator(event, size_guidance={event_accumulator.SCALARS: 0})
             ea.Reload() # need to call this everytime before loading data
-            print(ea.Tags()) # check available tags
-            try: event_frames.append(pd.DataFrame(ea.Scalars(args.y_axis)))
-            except KeyError: continue
+            # print(ea.Tags()) # check available tags
+            if 0:
+                return ea.Histograms(args.y_axis)[0]
+            else:
+                try: event_frames.append(pd.DataFrame(ea.Scalars(args.y_axis)))
+                except KeyError: continue
         event_frames = sorted(event_frames, key=lambda df: df[args.x_axis][0])
 
         # Save dataframe for this worker
@@ -169,19 +176,24 @@ def plot_tags(args):
 
         # Extract raw data
         os.chdir('{}/model'.format(usertag))
-        df = extract_data(usertag, tags, args) # either averaged, or train_0
-        tag_frames.append(df) # save to calculate std
-
-        # Plot each curve
-        if args.ave_tags in {False, 'False'}:
-            plot = sb.lineplot(x=args.x_axis, y='value', data=df, label='{}'.format(usertag.replace('_', ' ')))
-        # or ... concatenate them and plot at the end
+        if 0:
+            hist = extract_data(usertag, tags, args).histogram_value
+            sb.lineplot(x=hist.bucket_limit, y=hist.bucket)
         else:
-            df = interpolate(df, args) # costly, but sets each curve to the same x ticks
-            if count == 0: final_df = df
-            else: final_df = pd.concat((final_df, df))
-            count += 1
-        os.chdir('../'*6)
+            df = extract_data(usertag, tags, args) # either averaged, or train_0
+        
+            tag_frames.append(df) # save to calculate std
+
+            # Plot each curve
+            if args.ave_tags in {False, 'False'}:
+                plot = sb.lineplot(x=args.x_axis, y='value', data=df, label='{}'.format(usertag.replace('_', ' ')))
+            # or ... concatenate them and plot at the end
+            else:
+                df = interpolate(df, args) # costly, but sets each curve to the same x ticks
+                if count == 0: final_df = df
+                else: final_df = pd.concat((final_df, df))
+                count += 1
+            os.chdir('../'*6)
 
     # If averaging over tags, plot them here at the end (with standard deviation bars)
     if args.ave_tags in {True, 'True'}:

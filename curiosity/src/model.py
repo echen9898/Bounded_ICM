@@ -374,7 +374,7 @@ class LSTMPredictor(object):
         state_in = rnn.rnn_cell.LSTMStateTuple(c_in, h_in)
         lstm_outputs, lstm_state = tf.nn.dynamic_rnn(lstm_cell, x, initial_state=state_in, sequence_length=batch_size, time_major=False)
         lstm_c, lstm_h = lstm_state
-        lstm_outputs = tf.reshape(lstm_outputs, [horizon, 288])# should be [1, horizon, 288]
+        lstm_outputs = tf.reshape(lstm_outputs, [horizon, 288]) # should be [horizon, 1, 288]
         self.state_out = [lstm_c[:1, :], lstm_h[:1, :]]
 
         # compute loss 
@@ -383,6 +383,10 @@ class LSTMPredictor(object):
 
         # variable list
         self.var_list = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, tf.get_variable_scope().name)
+
+    def get_initial_features(self):
+        # Call this function to get reseted lstm memory cells
+        return self.state_init
 
     def pred_act(self, s1, s2):
         '''
@@ -393,7 +397,7 @@ class LSTMPredictor(object):
         sess = tf.get_default_session()
         return sess.run(self.ainvprobs, {self.s1: [s1], self.s2: [s2]})[0, :]
 
-    def pred_bonus(self, s1, s2, asample):
+    def pred_bonus(self, s1, s2, asample, c, h):
         '''
         returns bonus predicted by forward model
             input: s1,s2 shapes: (horizon, h, w, ch), asample shape: (horizon, ac_space) where ac_space is 1-hot encoding
@@ -401,7 +405,7 @@ class LSTMPredictor(object):
         '''
         sess = tf.get_default_session()
         errors = sess.run(self.forwardloss,
-            {self.s1: [s1], self.s2: [s2], self.asamples: [asample]})
+            {self.s1: s1, self.s2: s2, self.asample: asample, self.state_in[0]: c, self.state_in[1]: h})
         errors = errors * constants['PREDICTION_BETA'] # multiply element wise
         return errors
 

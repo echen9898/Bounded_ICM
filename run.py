@@ -99,7 +99,8 @@ PLOT_PARAMS = {
     'x_increment':10000,
     'left_x':0,
     'right_x':10000000,
-    'span':150.0
+    'span':150.0,
+    'histogram':False
 }
 
 # arguments with 'action = store_true' in plot.py
@@ -184,6 +185,7 @@ parser.add_argument('--x-increment', type=int, default=10000, help='Spacing betw
 parser.add_argument('--left-x', type=int, default=0, help='Leftmost x-axis value (timestep usually).')
 parser.add_argument('--right-x', type=int, default=10000000, help='Rightmost x-axis value (timestep usually).')
 parser.add_argument('--span', type=float, default=150.0, help='Smoothing parameter for EWMA. 150 for Doom, 500 for Mario is safe.')
+parser.add_argument('--histogram', default=False, help='Whether or not youre plotting reward histogram')
 
 
 # ------------------------------------------- DATABASE ------------------------------------------- #

@@ -62,7 +62,8 @@ def run(args, server):
     env = create_env(args.env_id, client_id=str(args.task), remotes=args.remotes, envWrap=args.envWrap, designHead=args.designHead,
                         noLifeReward=args.noLifeReward, record=visualise, record_frequency=args.record_frequency, outdir=args.record_dir, multi_envs_doom=args.multi_envs_doom)
     
-    trainer = A3C(env, args.task, args.visualise, args.unsup, args.envWrap, args.designHead, args.noReward, args.bonus_bound, args.adv_norm, obs_mean, obs_std, args.rew_norm, args.backup_bound, args.horizon, args.mstep_mode)
+    trainer = A3C(env, args.task, args.visualise, args.unsup, args.envWrap, args.designHead, args.noReward, args.bonus_bound, args.adv_norm, obs_mean, 
+                    obs_std, args.rew_norm, args.backup_bound, args.horizon, args.mstep_mode)
 
     # logging
     if args.task == 0:

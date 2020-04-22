@@ -43,7 +43,16 @@ CONFIGS = [['basic.cfg', 'basic.wad', 3, 5],                                    
            ['labyrinth17.cfg', 'labyrinth_randtx4.wad', 3, 5],                     # 32
            ['labyrinth18.cfg', 'labyrinth_randtx4.wad', 3, 5],                     # 33
            ['labyrinth19.cfg', 'labyrinth_randtx4.wad', 3, 5],                     # 34
-           ['labyrinth20.cfg', 'labyrinth_randtx4.wad', 3, 5]]                     # 35
+           ['labyrinth20.cfg', 'labyrinth_randtx4.wad', 3, 5],                     # 35
+
+           ['labyrinth_many_4.cfg', 'labyrinth_many_fixed_2.wad', 3, 5],           # 36
+           ['labyrinth_many_5.cfg', 'labyrinth_many_fixed_2.wad', 3, 5],           # 37
+           ['labyrinth_many_6.cfg', 'labyrinth_many_fixed_2.wad', 3, 5],           # 38
+           ['labyrinth_many_7.cfg', 'labyrinth_many_fixed_2.wad', 3, 5],           # 39
+           ['labyrinth_many_8.cfg', 'labyrinth_many_fixed_2.wad', 3, 5],           # 40
+           ['labyrinth_many_9.cfg', 'labyrinth_many_fixed_2.wad', 3, 5],           # 41
+           ['labyrinth_many_10.cfg', 'labyrinth_many_fixed_2.wad', 3, 5],          # 42
+           ['labyrinth_many_11.cfg', 'labyrinth_many_fixed_2.wad', 3, 5]]          # 43
 
 # Maps actions from deprecated ppaquette package to new vizdoom environment
 my_way_home_map = {13:[1, 0, 0, 0], 14:[0, 1, 0, 0], 15:[0, 0, 1, 0], 'noop':[0, 0, 0, 1]} 

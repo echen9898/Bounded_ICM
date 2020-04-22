@@ -104,6 +104,62 @@ register(
     reward_threshold=0.5
 )
 
+register(
+    id='LabyrinthManyFixed-4-v0',
+    entry_point='vizdoomgym.envs:VizdoomLabyrinthManyFixed_4',
+    max_episode_steps=2099,
+    reward_threshold=0.5
+)
+
+register(
+    id='LabyrinthManyFixed-5-v0',
+    entry_point='vizdoomgym.envs:VizdoomLabyrinthManyFixed_5',
+    max_episode_steps=2099,
+    reward_threshold=0.5
+)
+
+register(
+    id='LabyrinthManyFixed-6-v0',
+    entry_point='vizdoomgym.envs:VizdoomLabyrinthManyFixed_6',
+    max_episode_steps=2099,
+    reward_threshold=0.5
+)
+
+register(
+    id='LabyrinthManyFixed-7-v0',
+    entry_point='vizdoomgym.envs:VizdoomLabyrinthManyFixed_7',
+    max_episode_steps=2099,
+    reward_threshold=0.5
+)
+
+register(
+    id='LabyrinthManyFixed-8-v0',
+    entry_point='vizdoomgym.envs:VizdoomLabyrinthManyFixed_8',
+    max_episode_steps=2099,
+    reward_threshold=0.5
+)
+
+register(
+    id='LabyrinthManyFixed-9-v0',
+    entry_point='vizdoomgym.envs:VizdoomLabyrinthManyFixed_9',
+    max_episode_steps=2099,
+    reward_threshold=0.5
+)
+
+register(
+    id='LabyrinthManyFixed-10-v0',
+    entry_point='vizdoomgym.envs:VizdoomLabyrinthManyFixed_10',
+    max_episode_steps=2099,
+    reward_threshold=0.5
+)
+
+register(
+    id='LabyrinthManyFixed-11-v0',
+    entry_point='vizdoomgym.envs:VizdoomLabyrinthManyFixed_11',
+    max_episode_steps=2099,
+    reward_threshold=0.5
+)
+
 # -------------------------------------------------------------------- LABYRINTH ENVIRONMENTS --------------------------------------------------------------------
 register(
     id='LabyrinthRandTx-1-v0',
