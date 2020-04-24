@@ -145,20 +145,24 @@ def create_usertag(args):
         elif 'mario' in args.env_id.lower():
             setting = args.env_id
 
-    # Unique count id
-    row_index = get_row_index('{}_{}'.format(algo, setting), args.registry)
+    # Get trial number using heading count in top rows
     book = load_workbook(args.registry, read_only=True)
     table = row_matrix(book['Experiments'])
+    row_index = get_row_index('{}_{}'.format(algo, setting), args.registry)
     trial_number = str(int(table[row_index-1][1]) + 1)
-
-    # Seed number
-    seed = get_count('{}_{}_{}'.format(algo, setting, trial_number), args.registry)
 
     # Insert the pretrain tags trial/seed number back into the setting
     if args.pretrain:
         setting = setting.split('_')
         setting.insert(1, pretrain_tag[2])
         setting = '_'.join(setting)
+
+    # Unique count id
+    if args.pretrain:
+        # need the full setting - e.g. icm_labyrinth_20.0 to get the right count
+        seed = get_count('{}_{}_{}'.format(algo, setting, trial_number), args.registry, verbatim=False)
+    else:
+        seed = get_count('{}_{}_{}'.format(algo, setting, trial_number), args.registry)
 
     usertag = '{}_{}_{}.{}'.format(algo, setting, trial_number, seed)
     return usertag
