@@ -111,8 +111,8 @@ def extract_data(usertag, tags, args):
         for event in events:
             ea = event_accumulator.EventAccumulator(event, size_guidance={event_accumulator.SCALARS: 0})
             ea.Reload() # need to call this everytime before loading data
-            # print(ea.Tags()) # check available tags
-            if 0:
+            print(ea.Tags()) # check available tags
+            if args.histogram is not None:
                 return ea.Histograms(args.y_axis)[0]
             else:
                 try: event_frames.append(pd.DataFrame(ea.Scalars(args.y_axis)))
@@ -176,7 +176,7 @@ def plot_tags(args):
 
         # Extract raw data
         os.chdir('{}/model'.format(usertag))
-        if 0:
+        if args.histogram is not None:
             hist = extract_data(usertag, tags, args).histogram_value
             sb.lineplot(x=hist.bucket_limit, y=hist.bucket)
         else:

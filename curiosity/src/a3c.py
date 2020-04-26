@@ -386,9 +386,9 @@ def env_runner(env, policy, num_local_steps, summary_writer, render, predictors,
                 if length >= timestep_limit or not env.metadata.get('semantics.autoreset'):
                     last_state = env.reset()
                     end = time.time()
-                    length = (end - start)
+                    time_length = (end - start)
                     with open('times.txt', 'a') as f:
-                        f.write(str(length) + '\n')
+                        f.write(str(time_length) + '\n')
                     start = time.time()
                     state_memory = [last_state]
                     action_memory = []

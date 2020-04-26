@@ -10,9 +10,11 @@ COLS = {
     'date':0,
     'usertag':1,
     'description':2,
-    'seed':3,
-    'experiment_id':4,
-    'params_id':5
+    'plots':3,
+    'demos':4,
+    'experiment_id':5,
+    'params_id':6,
+    'git_commit':7
 }
 
 # row indexes of interest

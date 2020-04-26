@@ -10,5 +10,7 @@ ops.py
 /curiosity/models/saved
 /curiosity/src/_vizdoom*
 /curiosity/src/tmp
+/curiosity/src/env_timing
+/curiosity/src/vizdoom-crash.log
 /curiosity/results
 *.egg-info*
