@@ -219,7 +219,7 @@ def update_registry(args, usertag, seed_num, exp_id, params_id):
     description = raw_input('ENTER A SHORT EXPERIMENT DESCRIPTION: ')
     branch = subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD']).strip().decode('utf-8')
     commit = subprocess.check_output(['git', 'rev-parse', 'HEAD']).strip().decode('utf-8')
-    sheet.append([time, usertag, description, seed_num, exp_id, params_id, '{}_{}'.format(branch, commit)])
+    sheet.append([time, usertag, description, '', '', exp_id, params_id, '{}_{}'.format(branch, commit)])
 
     format(sheet)
     book.save(args.registry)
