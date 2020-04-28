@@ -3,6 +3,7 @@
 *.sh
 experiment_log.*
 plot.py
+sort.py
 ops.py
 /curiosity/params
 /curiosity/models/output
@@ -14,3 +15,5 @@ ops.py
 /curiosity/src/vizdoom-crash.log
 /curiosity/results
 *.egg-info*
+curiosity/src/test_animations.py
+vizdoomgym/vizdoomgym/envs/scenarios/random_texture_code/texture_videos/

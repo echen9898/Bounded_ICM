@@ -39,9 +39,18 @@ def create_doom(env_id, client_id, envWrap=True, record=False, outdir=None,
     import vizdoomgym
 
     client_id = int(client_id)
-    # map_number = random.choice([2, 5, 10, 12, 15, 19])
-    # map_number = random.choice([4, 5, 6, 7])
-    map_number = random.choice([4, 5, 8, 10])
+    
+    if 'labyrinth' in env_id.lower():
+        if 'many' in env_id.lower():
+            if 'all' in env_id.lower():
+                map_choices = [4, 5, 8, 10]
+            else:
+                map_choices = [4, 5, 6, 7]
+        else:
+            map_choices = [2, 5, 10, 12, 15, 19]
+
+    map_number = random.choice(map_choices)
+
     if multi_envs_doom:
         outdir = 'tmp/model/videos/worker{}_map{}'.format(client_id+1, map_number)
 

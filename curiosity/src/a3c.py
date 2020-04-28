@@ -387,7 +387,7 @@ def env_runner(env, policy, num_local_steps, summary_writer, render, predictors,
                     last_state = env.reset()
                     end = time.time()
                     time_length = (end - start)
-                    with open('times.txt', 'a') as f:
+                    with open('tmp/times.txt', 'a') as f:
                         f.write(str(time_length) + '\n')
                     start = time.time()
                     state_memory = [last_state]
