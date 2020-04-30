@@ -52,7 +52,7 @@ def create_maze(env_id, client_id, envWrap=True, record=False, outdir=None,
             env = wrappers.Monitor(env, outdir, force=True)
 
     # Wrappers
-    if envWrap:
+    if envWrap: 
         frame_skip = acRepeat if acRepeat>0 else 1
         fshape = (42, 42)
         env.seed(None)
@@ -83,7 +83,7 @@ def create_doom(env_id, client_id, envWrap=True, record=False, outdir=None,
                 map_choices = [4, 5, 6, 7]
         else:
             map_choices = [2, 5, 10, 12, 15, 19]
-    map_number = random.choice(map_choices)
+        map_number = random.choice(map_choices)
 
     if multi_envs_doom:
         outdir = 'tmp/model/videos/worker{}_map{}'.format(client_id+1, map_number)
