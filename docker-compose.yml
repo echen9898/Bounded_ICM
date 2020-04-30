@@ -16,11 +16,14 @@ services:
       - ./curiosity/params:/data/db
   trainer:
     build: .
-    image: echen9898/bounded_icm:0.1.10
+    image: echen9898/bounded_icm:0.2.0
     container_name: 'trainer'
     volumes:
       - ./:/bounded_curiosity
       - ./gym-super-mario:/gym-super-mario
+      - ./vizdoomgym:/vizdoomgym
+      - ./mazeworld:/mazeworld
+      - ./pycolab:/pycolab
       - /tmp/.X11-unix:/tmp/.X11-unix
     ports:
       - '8080:8080'

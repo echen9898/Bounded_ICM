@@ -21,8 +21,10 @@ universe.configure_logging(os.getcwd()+'/logs/universe-{}.log'.format(os.getpid(
 def create_env(env_id, client_id, remotes, **kwargs):
     if 'doom' in env_id.lower() or 'labyrinth' in env_id.lower():
         return create_doom(env_id, client_id, **kwargs)
-    if 'mario' in env_id.lower():
+    elif 'mario' in env_id.lower():
         return create_mario(env_id, client_id, **kwargs)
+    elif 'maze' in env_id.lower():
+        return create_maze(env_id, client_id, **kwargs)
 
     spec = gym.spec(env_id)
     if spec.tags.get('flashgames', False):
@@ -33,6 +35,39 @@ def create_env(env_id, client_id, remotes, **kwargs):
         # Assume atari.
         assert "." not in env_id  # universe environments have dots in names.
         return create_atari_env(env_id, **kwargs)
+
+def create_maze(env_id, client_id, envWrap=True, record=False, outdir=None,
+                    noLifeReward=False, acRepeat=0, record_frequency=None, **_):
+    import mazeworld
+
+    # Initialize environment
+    env_id = 'Maze-1-v0'
+    env = gym.make(env_id)
+
+    # Recorder
+    if record and outdir is not None:
+        if record_frequency:
+            env = wrappers.Monitor(env, outdir, video_callable=lambda episode_id: episode_id%record_frequency==0, force=True)
+        else:
+            env = wrappers.Monitor(env, outdir, force=True)
+
+    # Wrappers
+    if envWrap:
+        frame_skip = acRepeat if acRepeat>0 else 1
+        fshape = (42, 42)
+        env.seed(None)
+        if noLifeReward:
+            env = env_wrapper.NoNegativeRewardEnv(env)
+        env = env_wrapper.BufferedObsEnv(env, skip=frame_skip, shape=fshape, maxFrames=False)
+        if frame_skip > 1:
+            env = env_wrapper.SkipEnv(env, skip=frame_skip)
+    elif noLifeReward:
+        env = env_wrapper.NoNegativeRewardEnv(env)
+
+    env = Vectorize(env)
+    env = DiagnosticsInfo(env)
+    env = Unvectorize(env)
+    return env
 
 def create_doom(env_id, client_id, envWrap=True, record=False, outdir=None,
                     noLifeReward=False, acRepeat=0, record_frequency=None, multi_envs_doom=False, **_):
@@ -48,7 +83,6 @@ def create_doom(env_id, client_id, envWrap=True, record=False, outdir=None,
                 map_choices = [4, 5, 6, 7]
         else:
             map_choices = [2, 5, 10, 12, 15, 19]
-
     map_number = random.choice(map_choices)
 
     if multi_envs_doom:
