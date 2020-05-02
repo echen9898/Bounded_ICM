@@ -54,6 +54,7 @@ def create_maze(env_id, client_id, envWrap=True, record=False, outdir=None,
     # Wrappers
     if envWrap: 
         frame_skip = acRepeat if acRepeat>0 else 1
+        print('FRAME SKIP: ', frame_skip)
         fshape = (42, 42)
         env.seed(None)
         if noLifeReward:
@@ -125,6 +126,7 @@ def create_doom(env_id, client_id, envWrap=True, record=False, outdir=None,
     if envWrap:
         fshape = (42, 42)
         frame_skip = acRepeat if acRepeat>0 else 4
+        print('FRAME SKIP: ', frame_skip)
         env.seed(None)
         if noLifeReward:
             env = env_wrapper.NoNegativeRewardEnv(env)
@@ -170,6 +172,7 @@ def create_mario(env_id, client_id, envWrap=True, record=False, outdir=None,
 
     if envWrap:
         frame_skip = acRepeat if acRepeat>0 else 6
+        print('FRAME SKIP: ', frame_skip)
         fshape = (42, 42)
         env.seed(None)
         if noLifeReward:
