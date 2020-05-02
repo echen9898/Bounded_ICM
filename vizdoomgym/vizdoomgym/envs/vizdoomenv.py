@@ -24,26 +24,26 @@ CONFIGS = [['basic.cfg', 'basic.wad', 3, 5],                                    
            ['labyrinth.cfg', 'labyrinth_many.wad', 3, 5],                          # 14
            ['labyrinth.cfg', 'labyrinth_randtx.wad', 3, 5],                        # 15
 
-           ['labyrinth1.cfg', 'labyrinth_randtx4.wad', 3, 5],                      # 16
-           ['labyrinth2.cfg', 'labyrinth_randtx4.wad', 3, 5],                      # 17
-           ['labyrinth3.cfg', 'labyrinth_randtx4.wad', 3, 5],                      # 18
-           ['labyrinth4.cfg', 'labyrinth_randtx4.wad', 3, 5],                      # 19
-           ['labyrinth5.cfg', 'labyrinth_randtx4.wad', 3, 5],                      # 20
-           ['labyrinth6.cfg', 'labyrinth_randtx4.wad', 3, 5],                      # 21
-           ['labyrinth7.cfg', 'labyrinth_randtx4.wad', 3, 5],                      # 22
-           ['labyrinth8.cfg', 'labyrinth_randtx4.wad', 3, 5],                      # 23
-           ['labyrinth9.cfg', 'labyrinth_randtx4.wad', 3, 5],                      # 24
-           ['labyrinth10.cfg', 'labyrinth_randtx4.wad', 3, 5],                     # 25
-           ['labyrinth11.cfg', 'labyrinth_randtx4.wad', 3, 5],                     # 26
-           ['labyrinth12.cfg', 'labyrinth_randtx4.wad', 3, 5],                     # 27
-           ['labyrinth13.cfg', 'labyrinth_randtx4.wad', 3, 5],                     # 28
-           ['labyrinth14.cfg', 'labyrinth_randtx4.wad', 3, 5],                     # 29
-           ['labyrinth15.cfg', 'labyrinth_randtx4.wad', 3, 5],                     # 30
-           ['labyrinth16.cfg', 'labyrinth_randtx4.wad', 3, 5],                     # 31
-           ['labyrinth17.cfg', 'labyrinth_randtx4.wad', 3, 5],                     # 32
-           ['labyrinth18.cfg', 'labyrinth_randtx4.wad', 3, 5],                     # 33
-           ['labyrinth19.cfg', 'labyrinth_randtx4.wad', 3, 5],                     # 34
-           ['labyrinth20.cfg', 'labyrinth_randtx4.wad', 3, 5],                     # 35
+           ['labyrinth1.cfg', 'labyrinth_randtx8.wad', 3, 5],                      # 16
+           ['labyrinth2.cfg', 'labyrinth_randtx8.wad', 3, 5],                      # 17
+           ['labyrinth3.cfg', 'labyrinth_randtx8.wad', 3, 5],                      # 18
+           ['labyrinth4.cfg', 'labyrinth_randtx8.wad', 3, 5],                      # 19
+           ['labyrinth5.cfg', 'labyrinth_randtx8.wad', 3, 5],                      # 20
+           ['labyrinth6.cfg', 'labyrinth_randtx8.wad', 3, 5],                      # 21
+           ['labyrinth7.cfg', 'labyrinth_randtx8.wad', 3, 5],                      # 22
+           ['labyrinth8.cfg', 'labyrinth_randtx8.wad', 3, 5],                      # 23
+           ['labyrinth9.cfg', 'labyrinth_randtx8.wad', 3, 5],                      # 24
+           ['labyrinth10.cfg', 'labyrinth_randtx8.wad', 3, 5],                     # 25
+           ['labyrinth11.cfg', 'labyrinth_randtx8.wad', 3, 5],                     # 26
+           ['labyrinth12.cfg', 'labyrinth_randtx8.wad', 3, 5],                     # 27
+           ['labyrinth13.cfg', 'labyrinth_randtx8.wad', 3, 5],                     # 28
+           ['labyrinth14.cfg', 'labyrinth_randtx8.wad', 3, 5],                     # 29
+           ['labyrinth15.cfg', 'labyrinth_randtx8.wad', 3, 5],                     # 30
+           ['labyrinth16.cfg', 'labyrinth_randtx8.wad', 3, 5],                     # 31
+           ['labyrinth17.cfg', 'labyrinth_randtx8.wad', 3, 5],                     # 32
+           ['labyrinth18.cfg', 'labyrinth_randtx8.wad', 3, 5],                     # 33
+           ['labyrinth19.cfg', 'labyrinth_randtx8.wad', 3, 5],                     # 34
+           ['labyrinth20.cfg', 'labyrinth_randtx8.wad', 3, 5],                     # 35
 
            ['labyrinth_many_4.cfg', 'labyrinth_many_fixed_4.wad', 3, 5],           # 36
            ['labyrinth_many_5.cfg', 'labyrinth_many_fixed_4.wad', 3, 5],           # 37

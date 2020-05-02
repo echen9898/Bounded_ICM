@@ -82,7 +82,9 @@ def create_doom(env_id, client_id, envWrap=True, record=False, outdir=None,
             else:
                 map_choices = [4, 5, 6, 7]
         else:
-            map_choices = [2, 5, 10, 12, 15, 19]
+            # map_choices = [2, 5, 10, 12, 15, 19]
+            map_choices = [10, 16, 15, 7]
+
         map_number = random.choice(map_choices)
 
     if multi_envs_doom:

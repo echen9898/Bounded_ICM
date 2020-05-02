@@ -14,16 +14,17 @@ def change_textures(in_map, textures, index=None, animated_textures=None):
     #   all random; 
     #   all walls the same, ceil the same, floor the same; 
     #   all the same
-    # probs = [1.,1.,1.]
-    # r = random.uniform(0,probs[0] + probs[1] + probs[2])
-    # if r < probs[0]:
-    #     mode = 'all_rand'
-    # elif r < probs[0] + probs[1]:
-    #     mode = 'walls_ceil_floor'
-    # else:
-    #     mode = 'all_the_same'   
 
-    mode = 'all_rand'
+    probs = [1.,1.,1.]
+    r = random.uniform(0,probs[0] + probs[1] + probs[2])
+    if r < probs[0]:
+        mode = 'all_rand'
+    elif r < probs[0] + probs[1]:
+        mode = 'walls_ceil_floor'
+    else:
+        mode = 'all_the_same'   
+
+    # mode = 'all_rand'
     # mode = 'walls_ceil_floor'
     # mode = 'all_the_same'
         
@@ -31,6 +32,7 @@ def change_textures(in_map, textures, index=None, animated_textures=None):
     
     apply_to_mid = True # this has to be False for lab22
     if mode == 'all_rand':
+        print('ALL RAND')
         for s in map_editor.sidedefs:
             up = random.choice(textures)
             low = random.choice(textures)
@@ -55,9 +57,16 @@ def change_textures(in_map, textures, index=None, animated_textures=None):
             s.tx_floor = floor
             s.tx_ceil = ceil
     elif mode == 'walls_ceil_floor':
+        print('WALLS CEIL FLOOR')
         wall_tx = random.choice(textures)
         floor_tx = random.choice(textures)
         ceil_tx = random.choice(textures)
+        if wall_tx in ANIMATED_TEXTURES:
+            print('RED FLAG WALL: ', wall_tx)
+        if floor_tx in ANIMATED_TEXTURES:
+            print('RED FLAG FLOOR: ', floor_tx)
+        if ceil_tx in ANIMATED_TEXTURES:
+            print('RED FLAG CEIL: ', ceil_tx)
         for s in map_editor.sidedefs:
             s.tx_up = wall_tx
             s.tx_low = wall_tx
@@ -67,8 +76,11 @@ def change_textures(in_map, textures, index=None, animated_textures=None):
             s.tx_floor = floor_tx
             s.tx_ceil = ceil_tx
     elif mode == 'all_the_same':
+        print('ALL THE SAME')
         # all_tx = random.choice(textures)
-        all_tx = textures[index]
+        all_tx = random.choice(textures)
+        if all_tx in ANIMATED_TEXTURES:
+            print('RED FLAG ALL: ', all_tx)
         for s in map_editor.sidedefs:
             s.tx_up = all_tx
             s.tx_low = all_tx
@@ -91,8 +103,8 @@ def change_textures(in_map, textures, index=None, animated_textures=None):
 
 if __name__ == '__main__':
 
-    in_file = '../labyrinth_randtx.wad'
-    out_file = '../labyrinth_randtx3.wad'
+    in_file = '../labyrinth_randtx7.wad'
+    out_file = '../labyrinth_randtx8.wad'
     textures_file = 'static_textures.txt'
     
     wad = omg.WAD(in_file)

@@ -14,7 +14,7 @@ constants = {
 'MAX_GLOBAL_STEPS': 100000000,  # total steps taken across all workers
 'LEARNING_RATE': 1e-4,  # learning rate for adam
 
-'PREDICTION_BETA': 0.01,  # weight of prediction bonus. FOR MARIO: 0.2, FOR DOOM: 0.01
+'PREDICTION_BETA': 0.1,  # weight of prediction bonus. FOR MARIO: 0.2, FOR DOOM: 0.01
                           # set 0.5 for unsup=state
 'PREDICTION_LR_SCALE': 10.0,  # scale lr of predictor wrt to policy network
                               # set 30-50 for unsup=state.
