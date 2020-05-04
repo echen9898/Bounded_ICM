@@ -40,7 +40,7 @@ def get_new_labels():
     '''
     ax = plt.gca()
     ax.get_xaxis().get_major_formatter().set_scientific(False)
-    plt.savefig('temp.jpg') # need to save the figure before accessing tick labels
+    plt.savefig('temp.png') # need to save the figure before accessing tick labels
     new_labels = list()
     for l in ax.get_xticklabels():
         val = float(l.get_text().replace('\U00002212', '-'))
@@ -50,7 +50,7 @@ def get_new_labels():
             new_labels.append('{}k'.format(val/1000))
         else: # hundreds, or already refactored (by matplotlib)
             new_labels.append(val)
-    os.system('rm temp.jpg')
+    os.system('rm temp.png')
     return new_labels
 
 def style(args):
@@ -216,9 +216,9 @@ def plot_tags(args):
     elif sys.version_info[0] == 3: user_inp = input('SAVE PLOT? -> (Y/N): ')
     if user_inp == 'Y':
         print('---- Saving plot in {} directory'.format(args.output_dir))
-        if args.ave_tags in {True, 'True'}: savename = '{}_averaged_tags.jpg'.format('_'.join([tags[0], args.y_axis.split('/')[-1]]))
-        elif args.ave_runs in {True, 'True'}: savename = '{}_averaged_runs.jpg'.format('_'.join([tags[0], args.y_axis.split('/')[-1]]))
-        else: savename = '{}.jpg'.format('_'.join([tags[0], args.y_axis.split('/')[-1]]))
+        if args.ave_tags in {True, 'True'}: savename = '{}_averaged_tags.png'.format('_'.join([tags[0], args.y_axis.split('/')[-1]]))
+        elif args.ave_runs in {True, 'True'}: savename = '{}_averaged_runs.png'.format('_'.join([tags[0], args.y_axis.split('/')[-1]]))
+        else: savename = '{}.png'.format('_'.join([tags[0], args.y_axis.split('/')[-1]]))
         os.chdir('./curiosity/results/icm/{}/{}/plots/'.format(mode, args.output_dir))
         plot.get_figure().savefig(savename)
     else:

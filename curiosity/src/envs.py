@@ -41,7 +41,10 @@ def create_maze(env_id, client_id, envWrap=True, record=False, outdir=None,
     import mazeworld
 
     # Initialize environment
-    env_id = 'Maze-1-v0'
+    if 'deepmind' in env_id.lower():
+        env_id = 'DeepmindMaze-1-v0'
+    else:
+        env_id = 'Maze-1-v0'
     env = gym.make(env_id)
 
     # Recorder
@@ -123,7 +126,7 @@ def create_doom(env_id, client_id, envWrap=True, record=False, outdir=None,
         else:
             env = wrappers.Monitor(env, outdir, force=True)
 
-    if envWrap:
+    if envWrap in {'True', True}:
         fshape = (42, 42)
         frame_skip = acRepeat if acRepeat>0 else 4
         print('FRAME SKIP: ', frame_skip)
@@ -170,7 +173,7 @@ def create_mario(env_id, client_id, envWrap=True, record=False, outdir=None,
         else:
             env = gym.wrappers.Monitor(env, outdir, force=True)
 
-    if envWrap:
+    if envWrap in {'True', True}:
         frame_skip = acRepeat if acRepeat>0 else 6
         print('FRAME SKIP: ', frame_skip)
         fshape = (42, 42)

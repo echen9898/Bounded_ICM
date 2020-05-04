@@ -156,6 +156,11 @@ def create_usertag(args):
             elif 'very' in args.env_id.lower(): setting='verySparse'
             elif 'sparse' in args.env_id.lower(): setting='sparse'
             else: setting='dense'
+        elif 'maze' in args.env_id.lower():
+            if 'deepmind' in args.env_id.lower():
+                setting = 'maze'
+            else:
+                setting = 'bigmaze'
         else:
             setting = args.env_id
 

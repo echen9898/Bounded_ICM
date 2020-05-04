@@ -86,7 +86,7 @@ MAZES_ART = [
      '#   #   #   #   #########   #####   #########   #############################   #####   #',
      '#   #   #   #   #       #       e           #   #           #           #       #   #   #',
      '#   #   #   #   #   #   #################   #   #   #####   #   #########   #####   #   #',
-     '#       #   #       #       #           #   #         f     #           #   #       #   #',
+     '#       #   #       #       #           #   #               #           #   #       #   #',
      '#########   #############   #     ###   #   #   #####       #########   #   #   #####   #',
      '#       #   #           #   #       #   #   #   #           #       #   #       #       #',
      '#   #   ############    #   #########   #   #   #   #########   #   #   #   #   #####   #',
@@ -250,8 +250,7 @@ COLOUR_FG = {' ': (0, 0, 0),        # Default black background
              'b': (145, 987, 341),  # Patroller B
              'c': (987, 623, 145),  # Patroller C
              'd': (987, 623, 145),  # Patroller D
-             'e': (987, 623, 145),  # Patroller E
-             'f': (987, 623, 145)}  # Patroller F
+             'e': (987, 623, 145)}  # Patroller E
 
 COLOUR_BG = {'@': (0, 0, 0)}  # So the coins look like @ and not solid blocks.
 
@@ -266,12 +265,10 @@ def make_game(level):
           'b': PatrollerSprite,
           'c': PatrollerSprite,
           'd': PatrollerSprite,
-          'e': PatrollerSprite,
-          'f': PatrollerSprite},
-      drapes={
-          '@': CashDrape},
-      update_schedule=['P', 'a', 'b', 'c', 'd', 'e', 'f', '@'],
-      z_order='abcdef@P')
+          'e': PatrollerSprite},
+      drapes={'@': CashDrape},
+      update_schedule=['P', 'a', 'b', 'c', 'd', 'e', '@'],
+      z_order='abcde@P')
 
 
 def make_croppers(level):
@@ -392,7 +389,6 @@ def main(argv=()):
 
   # Let the game begin!
   ui.play(game)
-
 
 if __name__ == '__main__':
   main(sys.argv)

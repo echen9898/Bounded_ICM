@@ -13,6 +13,7 @@ from utils import RunningMeanStd, update_mean_var_count_from_moments
 use_tf12_api = distutils.version.LooseVersion(tf.VERSION) >= distutils.version.LooseVersion('0.12.0')
 import pdb
 import itertools
+from PIL import Image
 
 
 def discount(x, gamma, trivial=False):

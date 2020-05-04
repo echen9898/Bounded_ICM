@@ -8,8 +8,7 @@ import numpy as np
 
 from gym import spaces
 
-from pycolab.examples import better_scrolly_maze
-
+from pycolab.examples import better_scrolly_maze, deepmind_maze
 from mazeworld.envs import pycolab_env
 
 class MazeWorld(pycolab_env.PyColabEnv):
@@ -29,3 +28,21 @@ class MazeWorld(pycolab_env.PyColabEnv):
 
     def make_game(self):
         return better_scrolly_maze.make_game(self.level)
+
+class DeepmindMazeWorld(pycolab_env.PyColabEnv):
+    """Deepmind World Discovery Models game.
+    """
+
+    def __init__(self,
+                 level=0,
+                 max_iterations=10,
+                 default_reward=-1.):
+        self.level = level
+        super(DeepmindMazeWorld, self).__init__(
+            max_iterations=max_iterations,
+            default_reward=default_reward,
+            action_space=spaces.Discrete(4 + 1),
+            resize_scale=8)
+
+    def make_game(self):
+        return deepmind_maze.make_game(self.level)
