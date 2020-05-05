@@ -11,6 +11,23 @@ from tensorboard.backend.event_processing import event_accumulator
 # ------------------------------------------- DEFAULTS ------------------------------------------- #
 RESULTS_PATH_DOOM = './curiosity/results/icm/doom'
 RESULTS_PATH_MARIO = './curiosity/results/icm/mario'
+COLORS = [ # all available colors
+    '#23282A', # black
+    '#a200ff', # purple
+    '#00aedb', # turquoise
+    '#f47835', # orange
+    '#dd93d6', # pink
+    '#d41243', # red
+    '#326ada', # blue
+    '#008000', # green
+    '#b0e0e6', # light blue
+    '#964019', # brown
+    '#035e7e', # navy blue
+    '#82644c', # light brown
+    '#f52e57', # hot pink
+    '#19d120', # bright green
+    '#f24e1b', # bright orange
+]
 
 
 # ------------------------------------------- ARGUMENTS ------------------------------------------- #
@@ -158,6 +175,9 @@ def plot_tags(args):
 
     if not os.path.isdir('./{}/plots/'.format(args.output_dir)): 
         os.system('mkdir -p ./curiosity/results/icm/{}/{}/plots/'.format(mode, args.output_dir))
+
+    # Set colors here
+    sb.set_palette(sb.blend_palette(COLORS, n_colors=len(COLORS)))
 
     # Extract a dataframe for each curve
     tags = args.plot_tags.split('+')
