@@ -4,6 +4,23 @@ import tensorflow as tf
 import tensorflow.contrib.rnn as rnn
 from constants import constants
 
+class LSTMCellWrapper(rnn.rnn_cell.RNNCell):
+  def __init__(self, inner_cell):
+     super(LSTMCellWrapper, self).__init__()
+     self._inner_cell = inner_cell
+  
+  @property
+  def state_size(self):
+     return self._inner_cell.state_size
+  
+  @property
+  def output_size(self):
+    return (self._inner_cell.state_size, self._inner_cell.output_size)
+
+  def __call__(self, input, *args, **kwargs):
+    output, next_state = self._inner_cell(input, *args, **kwargs)
+    emit_output = (next_state, output)
+    return emit_output, next_state
 
 def normalized_columns_initializer(std=1.0):
     def _initializer(shape, dtype=None, partition_info=None):
@@ -20,8 +37,11 @@ def cosineLoss(A, B, name):
     return loss
 
 
-def flatten(x):
-    return tf.reshape(x, [-1, np.prod(x.get_shape().as_list()[1:])])
+def flatten(x, horizon=None):
+    if horizon is not None: # lstm flattening: [batch, horizon, 3, 3, 32] ==> [batch, horizon, 288]
+        return tf.reshape(x, [-1, horizon, np.prod(x.get_shape().as_list()[2:])])
+    else: # standard flattening: [batch, 3, 3, 32] ==> [batch, 288]
+        return tf.reshape(x, [-1, np.prod(x.get_shape().as_list()[1:])])
 
 
 def conv2d(x, num_filters, name, filter_size=(3, 3), stride=(1, 1), pad="SAME", dtype=tf.float32, collections=None):
@@ -71,6 +91,27 @@ def deconv2d(x, out_shape, name, filter_size=(3, 3), stride=(1, 1), pad="SAME", 
         # deconv2d = tf.reshape(tf.nn.bias_add(deconv2d, b), deconv2d.get_shape())
         return deconv2d
 
+def conv3d(x, num_filters, name, filter_size=(3, 3), stride=(1, 1), pad="SAME", dtype=tf.float32, collections=None, horizon=1):
+    with tf.variable_scope(name):
+        stride_shape = [1, 1, stride[0], stride[1], 1] # [batch, depth, height, width, channel]
+        filter_shape = [horizon, filter_size[0], filter_size[1], int(x.get_shape()[4]), num_filters] # [depth, height, width, in_channels, out_channels]
+
+        # there are "depth * filter height * filter width * num input channels"
+        # inputs to each hidden unit
+        fan_in = np.prod(filter_shape[:4])
+        # each unit in the lower layer receives a gradient from:
+        # "depth * filter height * filter width * num output features" /
+        #   pooling size
+        fan_out = np.prod(filter_shape[:3]) * num_filters
+        # initialize weights with random weights
+        w_bound = np.sqrt(6. / (fan_in + fan_out))
+
+        w = tf.get_variable("W", filter_shape, dtype, tf.random_uniform_initializer(-w_bound, w_bound),
+                            collections=collections)
+        b = tf.get_variable("b", [1, 1, 1, 1, num_filters], initializer=tf.constant_initializer(0.0),
+                            collections=collections)
+        return tf.nn.conv3d(x, w, stride_shape, pad) + b
+
 
 def linear(x, size, name, initializer=None, bias_init=0):
     w = tf.get_variable(name + "/w", [x.get_shape()[1], size], initializer=initializer)
@@ -112,19 +153,30 @@ def inverseUniverseHead(x, final_shape, nConvs=4):
 
 
 def universeHead(x, nConvs=4):
-    ''' universe agent example
-        input: [None, 42, 42, 1]; output: [None, 288];
+    ''' universe agent example (2d convolution)
+        input: [None, 42, 42, 1]; output if 2d: [None, 288];
     '''
-    print('Using universe head design')
+    print('Using universe head design (2D conv)')
     for i in range(nConvs):
-        x = tf.nn.elu(conv2d(x, 32, "l{}".format(i + 1), [3, 3], [2, 2]))
+        x = tf.nn.elu(conv2d(x, 32, "2d_l{}".format(i + 1), [3, 3], [2, 2]))
         # print('Loop{} '.format(i+1),tf.shape(x))
         # print('Loop{}'.format(i+1),x.get_shape())
     x = flatten(x)
     return x
 
+def universeHead3d(x, nConvs=4, horizon=1):
+    ''' universe agent example (3d convolution)
+        input: [None, horizon, 42, 42, 1]; output if 3d: [None, horizon, 288]
+    '''
+    print('Using universe head design (3D conv)')
+    for i in range(nConvs):
+        x = tf.nn.elu(conv3d(x, 32, "3d_l{}".format(i + 1), [3, 3], [2, 2], horizon=horizon))
+        # print('Loop{} '.format(i+1),tf.shape(x))
+        # print('Loop{}'.format(i+1),x.get_shape())
+    x = flatten(x, horizon=horizon)
+    return x
 
-def nipsHead(x):
+def nipsHead(x, lstm=False):
     ''' DQN NIPS 2013 and A3C paper
         input: [None, 84, 84, 4]; output: [None, 2592] -> [None, 256];
     '''
@@ -136,7 +188,7 @@ def nipsHead(x):
     return x
 
 
-def natureHead(x):
+def natureHead(x, lstm=False):
     ''' DQN Nature 2015 paper
         input: [None, 84, 84, 4]; output: [None, 3136] -> [None, 512];
     '''
@@ -149,7 +201,7 @@ def natureHead(x):
     return x
 
 
-def doomHead(x):
+def doomHead(x, lstm=False):
     ''' Learning by Prediction ICLR 2017 paper
         (their final output was 64 changed to 256 here)
         input: [None, 120, 160, 1]; output: [None, 1280] -> [None, 256];
@@ -188,6 +240,7 @@ class LSTMPolicy(object):
         c_init = np.zeros((1, lstm.state_size.c), np.float32)
         h_init = np.zeros((1, lstm.state_size.h), np.float32)
         self.state_init = [c_init, h_init]
+
         c_in = tf.placeholder(tf.float32, [1, lstm.state_size.c], name='c_in')
         h_in = tf.placeholder(tf.float32, [1, lstm.state_size.h], name='h_in')
         self.state_in = [c_in, h_in]
@@ -197,6 +250,7 @@ class LSTMPolicy(object):
             lstm, x, initial_state=state_in, sequence_length=step_size,
             time_major=False)
         lstm_c, lstm_h = lstm_state
+
         x = tf.reshape(lstm_outputs, [-1, size])
         self.vf = tf.reshape(linear(x, 1, "value", normalized_columns_initializer(1.0)), [-1])
         self.state_out = [lstm_c[:1, :], lstm_h[:1, :]]
@@ -304,7 +358,6 @@ class StateActionPredictor(object):
         error = error * constants['PREDICTION_BETA']
         return error
 
-
 class LSTMPredictor(object):
     def __init__(self, ob_space, ac_space, designHead='universe', horizon=1):
         # input: s1,s2: : [None, h, w, ch] (usually ch=1 or 4)
@@ -312,8 +365,8 @@ class LSTMPredictor(object):
         input_shape = [None] + list(ob_space)
 
         # state inputs for forard or inverse model
-        self.s1 = phi1 = tf.placeholder(tf.float32, input_shape)
-        self.s2 = phi2 = tf.placeholder(tf.float32, input_shape)
+        self.s1 = phi1 = tf.placeholder(tf.float32, input_shape, name='s1')
+        self.s2 = phi2 = tf.placeholder(tf.float32, input_shape, name='s2')
 
         # action input for forward model
         self.asample = asample = tf.placeholder(tf.float32, [None, ac_space])
@@ -342,60 +395,59 @@ class LSTMPredictor(object):
                 phi2 = universeHead(phi2)
 
         # INVERSE MODEL: g(phi1,phi2) -> a_inv: [None, ac_space]
-        g = tf.concat(1,[phi1, phi2])
+        g = tf.concat(1, [phi1, phi2])
         g = tf.nn.relu(linear(g, size, "g1", normalized_columns_initializer(0.01)))
+
         aindex = tf.argmax(asample, axis=1)  # aindex: [batch_size,]
         logits = linear(g, ac_space, "glast", normalized_columns_initializer(0.01))
         self.invloss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(
                                         logits, aindex), name="invloss")
-        self.ainvprobs = tf.nn.softmax(logits, dim=-1)
+        self.ainvprobs = tf.nn.softmax(logits, dim=-1)[0, :]
 
         # FORWARD MODEL: (phi1 + asample) -> [LSTM] -> phi2
         # Note: no backprop to asample of policy: it is treated as fixed for predictor training
-        x = tf.concat(1, [phi1, asample]) # result is [horizon, 288 + one_hot_action] where 288 is the length of feature vector phi1
-        x = tf.expand_dims(x, [0]) # introduce a "fake" batch dimension of 1 to do LSTM over time dim -> [1, horizon, 288 + one_hot_action]
-        batch_size = tf.shape(x)[:1]
+
+        # [batch, 288] concat [batch, 4] ==> [batch, 288 + 4]
+        self.batch_size = batch_size = tf.placeholder(tf.int32, name='batch_size')
+        x = tf.concat(1, [phi1, asample]) # [batch, 288 + 4]
+        x = tf.expand_dims(x, [0]) # [1, batch, 288 + 4]
 
         # initialize individual lstm cells
-        lstm_cell = rnn.rnn_cell.BasicLSTMCell(constants['LSTM_PREDICTOR_NUM_UNITS'], state_is_tuple=True)
+        lstm_cell = LSTMCellWrapper(rnn.rnn_cell.LSTMCell(constants['LSTM_PREDICTOR_NUM_UNITS'], state_is_tuple=True))
+        # lstm_cell = rnn.rnn_cell.LSTMCell(constants['LSTM_PREDICTOR_NUM_UNITS'], state_is_tuple=True)
         self.state_size = lstm_cell.state_size
 
-        # initialize hidden state
+        # lstm initial state placeholders
+        c_in = tf.placeholder(tf.float32, [1, lstm_cell.state_size.c], name='c_in_lstm')
+        h_in = tf.placeholder(tf.float32, [1, lstm_cell.state_size.h], name='h_in_lstm')
+        self.state_in = [c_in, h_in]
+
         c_init = np.zeros((1, lstm_cell.state_size.c), np.float32)
         h_init = np.zeros((1, lstm_cell.state_size.h), np.float32)
         self.state_init = [c_init, h_init]
 
-        # lstm hidden state placeholders
-        c_in = tf.placeholder(tf.float32, [1, lstm_cell.state_size.c], name='c_in')
-        h_in = tf.placeholder(tf.float32, [1, lstm_cell.state_size.h], name='h_in')
-        self.state_in = [c_in, h_in]
-
         # unroll lstm
         state_in = rnn.rnn_cell.LSTMStateTuple(c_in, h_in)
         lstm_outputs, lstm_state = tf.nn.dynamic_rnn(lstm_cell, x, initial_state=state_in, sequence_length=batch_size, time_major=False)
-        lstm_c, lstm_h = lstm_state
-        lstm_outputs = tf.reshape(lstm_outputs, [horizon, 288]) # should be [horizon, 1, 288]
-        self.state_out = [lstm_c[:1, :], lstm_h[:1, :]]
+        lstm_all_c = lstm_outputs[0].c # all cell states
+        lstm_all_h = lstm_outputs[0].h # all hidden states
+        lstm_outputs = lstm_outputs[1]
+        lstm_final_c, lstm_final_h = lstm_state # this is the last state out
+
+        lstm_outputs = tf.reshape(lstm_outputs, [-1, 288]) # [batch, 1, 288] ==> [batch, 288]
+        self.state_out = [lstm_all_c[0], lstm_all_h[0]]
 
         # compute loss 
         self.forwardloss = 0.5 * tf.reduce_mean(tf.square(tf.subtract(lstm_outputs, phi2)), axis=1)
+        self.forwardloss = tf.reshape(self.forwardloss, [-1]) # [[b1, b2, b3]] ==> [b1, b2, b3]
         self.forwardloss = self.forwardloss * 288.0 # lenFeatures=288. Factored out to make hyperparams not depend on it.
 
         # variable list
         self.var_list = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, tf.get_variable_scope().name)
 
     def get_initial_features(self):
-        # Call this function to get reseted lstm memory cells
+        # Call this function to get initial lstm memory cells
         return self.state_init
-
-    def pred_act(self, s1, s2):
-        '''
-        returns action probability distribution predicted by inverse model
-            input: s1,s2 shapes: (h, w, ch)
-            output: ainvprobs: [ac_space]
-        '''
-        sess = tf.get_default_session()
-        return sess.run(self.ainvprobs, {self.s1: [s1], self.s2: [s2]})[0, :]
 
     def pred_bonus(self, s1, s2, asample, c, h):
         '''
@@ -404,11 +456,16 @@ class LSTMPredictor(object):
             output: (horizon, scalar bonuses)
         '''
         sess = tf.get_default_session()
-        errors = sess.run(self.forwardloss,
-            {self.s1: s1, self.s2: s2, self.asample: asample, self.state_in[0]: c, self.state_in[1]: h})
-        errors = errors * constants['PREDICTION_BETA'] # multiply element wise
-        return errors
-
+        errors_and_features = sess.run([self.forwardloss] + self.state_out, 
+                                        {self.s1: s1, 
+                                        self.s2: s2, 
+                                        self.asample: asample, 
+                                        self.state_in[0]: c, 
+                                        self.state_in[1]: h, 
+                                        self.batch_size: len(s1)})
+        errors, c, h = errors_and_features
+        errors = errors * constants['PREDICTION_BETA']
+        return errors, [c, h]
 
 class StatePredictor(object):
     '''

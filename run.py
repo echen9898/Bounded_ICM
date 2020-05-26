@@ -258,17 +258,14 @@ def generate_commands(args):
                     os.system('rm -r ./curiosity/src/tmp')
                     wrap_print('---- Removed tmp folder. Exiting.')
             elif user_inp == 'Y':
-                if os.path.exists('./curiosity/src/tmp/usertag.txt'):
-                    with open('./curiosity/src/tmp/usertag.txt', 'r') as usertag_file: 
-                        usertag = usertag_file.read().strip()
-                    params_hash = get_value(usertag, 'params_id', args.registry)
-                    train = TrainingParams()
-                    params = train.find_by_id(params_hash.encode('utf-8')).next()
-                    # create training command (directory changes before this is run)
-                    commands.append('{} train.py {}'.format(py_cmd, dict_to_command(params, STORE_TRUE_TRAIN, TRAINING_PARAMS, args.op)))
-                    wrap_print('---- Restarting existing training session: {}'.format(usertag))
+                if os.path.exists('./curiosity/src/tmp/model/cmd.sh'):
+                    with open('./curiosity/src/tmp/model/cmd.sh', 'r') as cmd_file:
+                        lines = cmd_file.readlines()
+                        cmd = lines[0]
+                    commands.append(cmd)
+                    wrap_print('---- Restarting existing training session')
                 else:
-                    wrap_print('---- No usertag.txt file in current tmp directory')
+                    wrap_print('---- No cmd.sh file in current tmp directory')
 
         elif args.tag: # new model with old model parameters specified
 
