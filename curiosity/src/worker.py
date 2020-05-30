@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 import go_vncdriver
 import tensorflow as tf
-import numpy as np
 import argparse
 import logging
 import sys, signal
@@ -17,53 +16,22 @@ use_tf12_api = distutils.version.LooseVersion(tf.VERSION) >= distutils.version.L
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-# Enables write_meta_graph argument, but original authors claimed this "freezes entire process and is mostly useless"
+# Disables write_meta_graph argument, which freezes entire process and is mostly useless.
 class FastSaver(tf.train.Saver):
     def save(self, sess, save_path, global_step=None, latest_filename=None,
              meta_graph_suffix="meta", write_meta_graph=True):
         super(FastSaver, self).save(sess, save_path, global_step, latest_filename,
-                                    meta_graph_suffix, write_meta_graph)
+                                    meta_graph_suffix, False)
 
 def run(args, server):
 
-    # virtual display (headless remotes)
-    virtual_display = Display(visible=0, size=(1400, 900))
-    virtual_display.start()
+    if args.visualise:
+        virtual_display = Display(visible=0, size=(1400, 900))
+        virtual_display.start()
 
-    if args.multi_envs_doom:
-        if args.task % 5 == 0:
-            visualise = args.visualise
-        else:
-            visualise = False
-    elif args.task != 0: 
-        visualise = False
-    else:
-        visualise = args.visualise
-
-    # Observation normalization
-    obs_mean = None
-    obs_std = None
-    if args.obs_norm:
-        tmp_env = create_env(args.env_id, client_id=str(args.task), remotes=args.remotes, envWrap=args.envWrap, designHead=args.designHead,
-                        noLifeReward=args.noLifeReward, record=False, record_frequency=1, outdir='../random_obs')
-        observations = list()
-        _ = tmp_env.reset()
-        for _ in range(1000): # collect 10000 random observations
-            stepAct = np.random.randint(0, tmp_env.action_space.n) # random actions
-            state, _, terminal, _ = tmp_env.step(stepAct)
-            observations.append(state)
-            if terminal:
-                tmp_env.reset()
-        obs_mean = np.mean(observations, axis=0)
-        obs_std = np.std(observations, axis=0)
-        tmp_env.close()
-
-    # Initialize training instance and environment
     env = create_env(args.env_id, client_id=str(args.task), remotes=args.remotes, envWrap=args.envWrap, designHead=args.designHead,
-                        noLifeReward=args.noLifeReward, record=visualise, record_frequency=args.record_frequency, outdir=args.record_dir, multi_envs_doom=args.multi_envs_doom)
-    
-    trainer = A3C(env, args.task, args.visualise, args.unsup, args.envWrap, args.designHead, args.noReward, args.bonus_bound, args.adv_norm, obs_mean, 
-                    obs_std, args.rew_norm, args.backup_bound, args.horizon, args.mstep_mode)
+                        noLifeReward=args.noLifeReward, record=args.visualise, record_frequency=args.record_frequency, outdir=args.record_dir)
+    trainer = A3C(env, args.task, args.visualise, args.unsup, args.envWrap, args.designHead, args.noReward)
 
     # logging
     if args.task == 0:
@@ -130,8 +98,6 @@ def run(args, server):
     logger.info(
         "Starting session. If this hangs, we're mostly likely waiting to connect to the parameter server. " +
         "One common cause is that the parameter server DNS name isn't resolving yet, or is misspecified.")
-    
-    # Start training session
     with sv.managed_session(server.target, config=config) as sess, sess.as_default():
         # Workaround for FailedPreconditionError
         # see: https://github.com/openai/universe-starter-agent/issues/44 and 31
@@ -178,28 +144,20 @@ Setting up Tensorflow for data parallel work
     parser.add_argument('--task', default=0, type=int, help='Task index')
     parser.add_argument('--job-name', default="worker", help='worker or ps')
     parser.add_argument('--num-workers', default=1, type=int, help='Number of workers')
-    parser.add_argument('--log-dir', default="tmp/model", help='Log directory path')
+    parser.add_argument('--log-dir', default="tmp/doom", help='Log directory path')
     parser.add_argument('--env-id', default="doom", help='Environment id')
     parser.add_argument('-r', '--remotes', default=None, help='References to environments to create (e.g. -r 20), or the address of pre-existing VNC servers and rewarders to use (e.g. -r vnc://localhost:5900+15900,vnc://localhost:5901+15901)')
-    parser.add_argument('--visualise', type=bool, default=True, help="Visualise the gym environment by running env.render() between each timestep")
+    parser.add_argument('--visualise', action='store_true', help="Visualise the gym environment by running env.render() between each timestep")
     parser.add_argument('--envWrap', action='store_true', help="Preprocess input in env_wrapper (no change in input size or network)")
     parser.add_argument('--designHead', type=str, default='universe', help="Network deign head: nips or nature or doom or universe(default)")
-    parser.add_argument('--unsup', type=str, default=None, help="Unsup. exploration mode: action or action_lstm or state or stateAenc or None")
+    parser.add_argument('--unsup', type=str, default=None, help="Unsup. exploration mode: action or state or stateAenc or None")
     parser.add_argument('--noReward', action='store_true', help="Remove all extrinsic reward")
     parser.add_argument('--noLifeReward', action='store_true', help="Remove all negative reward (in doom: it is living reward)")
     parser.add_argument('--psPort', default=12222, type=int, help='Port number for parameter server')
     parser.add_argument('--delay', default=0, type=int, help='delay start by these many seconds')
     parser.add_argument('--pretrain', type=str, default=None, help="Checkpoint dir (generally ..../train/) to load from.")
-    parser.add_argument('--record-frequency', type=int, default=300, help="Interval (in episodes) between saved videos")
+    parser.add_argument('--record-frequency', type=int, default=200, help="Interval (in episodes) between saved videos")
     parser.add_argument('--record-dir', type=str, default='tmp/model/videos', help="Path to directory where training videos should be saved")
-    parser.add_argument('--bonus-bound', type=float, default=-1.0, help="Intrinsic reward bound. If reward is above this, it's set to 0")
-    parser.add_argument('--adv-norm', action='store_true', help="Normalize batch advantages after each rollout")
-    parser.add_argument('--obs-norm', action='store_true', help="Locally tandardize observations (pixelwise, individually by channel)")
-    parser.add_argument('--rew-norm', action='store_true', help="Normalize batch rewards by dividing by running standard deviation")
-    parser.add_argument('--backup-bound', type=float, default=-1.0, help="Bound the intrinsic reward discounted sum (backup term) before computing network targets")
-    parser.add_argument('--horizon', type=int, default=1, help="Multi-step prediction horizon")
-    parser.add_argument('--mstep-mode', type=str, default='sum', help="How to process the multi-step prediction rewards into a single reward (sum, dissum, max)")
-    parser.add_argument('--multi-envs-doom', action='store_true', help='If youre running doom labyrinth, whether or not to use different maps to train on')
     args = parser.parse_args()
 
     spec = cluster_spec(args.num_workers, 1, args.psPort)

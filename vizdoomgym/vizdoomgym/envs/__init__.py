@@ -15,6 +15,5 @@ from vizdoomgym.envs.doom_wrappers.action_space import *
 from vizdoomgym.envs.doom_wrappers.control import *
 from vizdoomgym.envs.doom_wrappers.observation_space import *
 from vizdoomgym.envs.vizdoomlabyrinthsingle import VizdoomLabyrinthSingle
-from vizdoomgym.envs.vizdoomlabyrinthmanyfixed import *
 from vizdoomgym.envs.vizdoomlabyrinthmany import VizdoomLabyrinthMany
-from vizdoomgym.envs.vizdoomlabyrinthrandtx import *
+from vizdoomgym.envs.vizdoomlabyrinthmanyfixed import VizdoomLabyrinthManyFixed

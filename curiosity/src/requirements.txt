@@ -8,37 +8,35 @@ chardet==3.0.4
 constantly==15.1.0
 docker-py==1.10.3
 docker-pycreds==0.2.1
-docopt==0.6.2
+doom-py==0.0.15
 fastzbarlight==0.0.14
 funcsigs==1.0.2
+-e git+https://github.com/openai/go-vncdriver.git@33bd0dd9620e97acd9b4e559bca217df09ba89e6#egg=go_vncdriver
 -e git+https://github.com/openai/gym.git@6f277090ed3323009a324ea31d00363afd8dfb3a#egg=gym
 -e git+https://github.com/pathak22/gym-pull.git@589039c29567c67fb3d5c0a315806419e0999415#egg=gym_pull
 hyperlink==17.2.1
 idna==2.5
 incremental==17.5.0
 ipaddress==1.0.18
-ipython==5.8.0
 mock==2.0.0
 numpy==1.13.1
 olefile==0.44
 pbr==3.1.1
 Pillow==4.2.1
+ppaquette-gym-doom==0.0.3
+-e git+https://github.com/ppaquette/gym-super-mario.git@2e5ee823b6090af3f99b1f62c465fc4b033532f4#egg=ppaquette_gym_super_mario
 protobuf==3.1.0
 pyglet==1.2.4
 PyOpenGL==3.1.0
-pymongo==3.9.0
-pytz==2019.3
 PyYAML==3.12
-pyvirtualdisplay==0.2.4
 requests>=2.20.0
 scipy==0.19.1
 six==1.10.0
-tensorflow==0.12.1
+tensorflow==0.12.0rc1
 Twisted==17.5.0
 txaio==2.8.0
 ujson==1.35
-universe==0.21.2
+-e git+https://github.com/openai/universe.git@e8037a103d8871a29396c39b2a58df439bde3380#egg=universe
 urllib3==1.21.1
-vizdoom==1.1.7
 websocket-client==0.44.0
 zope.interface==4.4.2

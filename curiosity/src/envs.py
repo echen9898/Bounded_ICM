@@ -1,11 +1,9 @@
 from __future__ import print_function
-import os, time
-import random
 from PIL import Image
 from gym.spaces.box import Box
 import numpy as np
 import gym
-from gym import spaces, wrappers
+from gym import spaces
 import logging
 import universe
 from universe import vectorized
@@ -13,18 +11,16 @@ from universe.wrappers import BlockingReset, GymCoreAction, EpisodeID, Unvectori
 from universe import spaces as vnc_spaces
 from universe.spaces.vnc_event import keycode
 import env_wrapper
-
+import time
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-universe.configure_logging(os.getcwd()+'/logs/universe-{}.log'.format(os.getpid()))
+universe.configure_logging()
 
 def create_env(env_id, client_id, remotes, **kwargs):
     if 'doom' in env_id.lower() or 'labyrinth' in env_id.lower():
         return create_doom(env_id, client_id, **kwargs)
-    elif 'mario' in env_id.lower():
+    if 'mario' in env_id.lower():
         return create_mario(env_id, client_id, **kwargs)
-    elif 'maze' in env_id.lower():
-        return create_maze(env_id, client_id, **kwargs)
 
     spec = gym.spec(env_id)
     if spec.tags.get('flashgames', False):
@@ -36,100 +32,50 @@ def create_env(env_id, client_id, remotes, **kwargs):
         assert "." not in env_id  # universe environments have dots in names.
         return create_atari_env(env_id, **kwargs)
 
-def create_maze(env_id, client_id, envWrap=True, record=False, outdir=None,
-                    noLifeReward=False, acRepeat=0, record_frequency=None, **_):
-    import mazeworld
-
-    # Initialize environment
-    if 'deepmind' in env_id.lower():
-        env_id = 'DeepmindMaze-1-v0'
-    else:
-        env_id = 'Maze-1-v0'
-    env = gym.make(env_id)
-
-    # Recorder
-    if record and outdir is not None:
-        if record_frequency:
-            env = wrappers.Monitor(env, outdir, video_callable=lambda episode_id: episode_id%record_frequency==0, force=True)
-        else:
-            env = wrappers.Monitor(env, outdir, force=True)
-
-    # Wrappers
-    if envWrap: 
-        frame_skip = acRepeat if acRepeat>0 else 1
-        print('FRAME SKIP: ', frame_skip)
-        fshape = (42, 42)
-        env.seed(None)
-        if noLifeReward:
-            env = env_wrapper.NoNegativeRewardEnv(env)
-        env = env_wrapper.BufferedObsEnv(env, skip=frame_skip, shape=fshape, maxFrames=False)
-        if frame_skip > 1:
-            env = env_wrapper.SkipEnv(env, skip=frame_skip)
-    elif noLifeReward:
-        env = env_wrapper.NoNegativeRewardEnv(env)
-
-    env = Vectorize(env)
-    env = DiagnosticsInfo(env)
-    env = Unvectorize(env)
-    return env
-
 def create_doom(env_id, client_id, envWrap=True, record=False, outdir=None,
-                    noLifeReward=False, acRepeat=0, record_frequency=None, multi_envs_doom=False, **_):
+                    noLifeReward=False, acRepeat=0, record_frequency=200, **_):
     import vizdoomgym
 
-    client_id = int(client_id)
-    
     if 'labyrinth' in env_id.lower():
-        if 'many' in env_id.lower():
-            if 'all' in env_id.lower():
-                map_choices = [4, 5, 8, 10]
-            else:
-                map_choices = [4, 5, 6, 7]
+        if 'single' in env_id.lower():
+            env_id = 'VizdoomLabyrinthSingle-v0' # SINGLE MAP
+        elif 'fix' in env_id.lower():
+            env_id = 'VizdoomLabyrinthManyFixed-v0' # MANY MAPS, FIXED SPAWN
         else:
-            # map_choices = [2, 5, 10, 12, 15, 19]
-            map_choices = [10, 16, 15, 7]
+            env_id = 'VizdoomLabyrinthMany-v0' # MANY MAPS, RANDOM SPAWN
 
-        map_number = random.choice(map_choices)
-
-    if multi_envs_doom:
-        outdir = 'tmp/model/videos/worker{}_map{}'.format(client_id+1, map_number)
-
-    # choose specific Doom map
-    if 'labyrinth' in env_id.lower():
-        if 'many' in env_id.lower():
-            env_id = 'LabyrinthManyFixed-{}-v0'.format(map_number)
-        elif multi_envs_doom:
-            env_id = 'LabyrinthRandTx-{}-v0'.format(map_number)
-        else:
-            env_id = 'LabyrinthRandTx-1-v0'
     elif 'very' in env_id.lower():
-        env_id = 'VizdoomMyWayHomeFixed15-v0'
+        env_id = 'VizdoomMyWayHomeFixed15-v0' # VERY SPARSE TEST ENV
     elif 'sparse' in env_id.lower():
-        env_id = 'VizdoomMyWayHomeFixed-v0'
+        env_id = 'VizdoomMyWayHomeFixed-v0' # SPARSE TEST ENV
+
+    # elif 'fix' in env_id.lower():
+    #     if '1' in env_id or '2' in env_id:
+    #         env_id = 'ppaquette/DoomMyWayHomeFixed' + str(env_id[-2:]) + '-v0'
+    #     elif 'new' in env_id.lower():
+    #         env_id = 'ppaquette/DoomMyWayHomeFixedNew-v0'
+    #     else:
+    #         env_id = 'ppaquette/DoomMyWayHomeFixed-v0'
     else:
-        env_id = 'VizdoomMyWayHome-v0'
+        env_id = 'VizdoomMyWayHome-v0' # DENSE TEST ENV
 
     # VizDoom workaround: Simultaneously launching multiple vizdoom processes
     # makes program stuck, so use the global lock in multi-threading/processing
+    client_id = int(client_id)
     time.sleep(client_id * 10)
     env = gym.make(env_id)
-
     modewrapper = vizdoomgym.envs.doom_wrappers.SetPlayingMode('algo')
     obwrapper = vizdoomgym.envs.doom_wrappers.SetResolution('160x120')
     acwrapper = vizdoomgym.envs.doom_wrappers.ToDiscrete('minimal')
-    env = obwrapper(acwrapper(env))
+    env = modewrapper(obwrapper(acwrapper(env)))
     # env = env_wrapper.MakeEnvDynamic(env)  # to add stochasticity
 
     if record and outdir is not None:
-        if record_frequency:
-            env = wrappers.Monitor(env, outdir, video_callable=lambda episode_id: episode_id%record_frequency==0, force=True)
-        else:
-            env = wrappers.Monitor(env, outdir, force=True)
+        env = gym.wrappers.Monitor(env, outdir, video_callable=lambda episode_id: episode_id%record_frequency==0, force=True)
 
-    if envWrap in {'True', True}:
+    if envWrap:
         fshape = (42, 42)
         frame_skip = acRepeat if acRepeat>0 else 4
-        print('FRAME SKIP: ', frame_skip)
         env.seed(None)
         if noLifeReward:
             env = env_wrapper.NoNegativeRewardEnv(env)
@@ -148,9 +94,6 @@ def create_mario(env_id, client_id, envWrap=True, record=False, outdir=None,
     import ppaquette_gym_super_mario
     from ppaquette_gym_super_mario import wrappers
 
-    path = os.path.abspath(ppaquette_gym_super_mario.__file__)
-    print(path)
-
     if '-v' in env_id.lower():
         env_id = 'ppaquette/' + env_id
     else:
@@ -168,14 +111,10 @@ def create_mario(env_id, client_id, envWrap=True, record=False, outdir=None,
     env = env_wrapper.MarioEnv(env)
 
     if record and outdir is not None:
-        if record_frequency:
-            env = gym.wrappers.Monitor(env, outdir, video_callable=lambda episode_id: episode_id%record_frequency==0, force=True)
-        else:
-            env = gym.wrappers.Monitor(env, outdir, force=True)
+        env = gym.wrappers.Monitor(env, outdir, video_callable=lambda episode_id: episode_id%record_frequency==0, force=True)
 
-    if envWrap in {'True', True}:
+    if envWrap:
         frame_skip = acRepeat if acRepeat>0 else 6
-        print('FRAME SKIP: ', frame_skip)
         fshape = (42, 42)
         env.seed(None)
         if noLifeReward:
@@ -447,5 +386,3 @@ class FlashRescale(vectorized.ObservationWrapper):
 
     def _observation(self, observation_n):
         return [_process_frame_flash(observation) for observation in observation_n]
-
-

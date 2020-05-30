@@ -1,6 +1,7 @@
 .DS_Store
 *.pyc
 *.sh
+*.sublime-*
 experiment_log.*
 plot.py
 sort.py

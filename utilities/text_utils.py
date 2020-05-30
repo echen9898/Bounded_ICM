@@ -197,7 +197,8 @@ def dict_to_command(args, store_true_args, default_params, mode):
             if value in {'True', True}:
                 cmd += '--{} '.format(argument.replace('_', '-'))
             continue
-        cmd += '--{} {} '.format(argument.replace('_', '-'), value)
+        if value is not None:
+            cmd += '--{} {} '.format(argument.replace('_', '-'), value)
     return cmd
 
 def update_experiment_count(usertag, registry_path):

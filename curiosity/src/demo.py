@@ -1,54 +1,31 @@
 #!/usr/bin/env python
 from __future__ import print_function
+import tensorflow as tf
 import gym
 import numpy as np
 import argparse
 import logging
-from pyvirtualdisplay import Display
 from envs import create_env
-import tensorflow as tf
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
+
 
 def inference(args):
     """
     It restore policy weights, and does inference.
     """
-    # virtual display (headless remotes)
-    virtual_display = Display(visible=0, size=(1400, 900))
-    virtual_display.start()
-
-    # Observation normalization
-    obs_mean = None
-    obs_std = None
-    if args.obs_norm:
-        tmp_env = create_env(args.env_id, client_id='0', remotes=None, envWrap=True, acRepeat=1,
-                            record=False, record_frequency=1, outdir=None)
-        observations = list()
-        _ = tmp_env.reset()
-        for _ in range(1000): # collect 10000 random observations
-            stepAct = np.random.randint(0, tmp_env.action_space.n) # random actions
-            state, _, terminal, _ = tmp_env.step(stepAct)
-            observations.append(state)
-            if terminal:
-                tmp_env.reset()
-        obs_mean = np.mean(observations, axis=0)
-        obs_std = np.std(observations, axis=0)
-        tmp_env.close()
-
     # define environment
     env = create_env(args.env_id, client_id='0', remotes=None, envWrap=True,
                         acRepeat=1, record=args.record, outdir=args.outdir)
-    num_actions = env.action_space.n
+    numaction = env.action_space.n
 
     with tf.device("/cpu:0"):
         config = tf.ConfigProto(allow_soft_placement=True, log_device_placement=False)
         with tf.Session(config=config) as sess:
             logger.info("Restoring trainable global parameters.")
-            saver = tf.train.import_meta_graph(args.ckpt+'.meta', clear_devices=True) # ADDED CLEAR DEVICES
+            saver = tf.train.import_meta_graph(args.ckpt+'.meta')
             saver.restore(sess, args.ckpt)
 
-            # Collections are saved in model.py under LSTM policy
             probs = tf.get_collection("probs")[0]
             sample = tf.get_collection("sample")[0]
             vf = tf.get_collection("vf")[0]
@@ -56,11 +33,6 @@ def inference(args):
             state_out_1 = tf.get_collection("state_out_1")[0]
 
             last_state = env.reset()
-
-            # normalize observation if needed
-            if obs_mean is not None and obs_std is not None:
-                last_state = (last_state-obs_mean)/obs_std
-
             if args.render or args.record:
                 env.render()
             last_features = np.zeros((1, 256), np.float32); last_features = [last_features, last_features]
@@ -69,6 +41,7 @@ def inference(args):
             mario_distances = np.zeros((args.num_episodes,))
             for i in range(args.num_episodes):
                 print("Starting episode %d" % (i + 1))
+
                 if args.random:
                     print('I am a random policy!')
                 else:
@@ -84,7 +57,7 @@ def inference(args):
 
                     # run environment
                     if args.random:
-                        stepAct = np.random.randint(0, num_actions)  # random policy
+                        stepAct = np.random.randint(0, numaction)  # random policy
                     else:
                         if args.greedy:
                             stepAct = prob_action.argmax()  # greedy policy
@@ -92,17 +65,13 @@ def inference(args):
                             stepAct = action.argmax()
                     state, reward, terminal, info = env.step(stepAct)
 
-                    # normalize observations if needed
-                    if obs_mean is not None and obs_std is not None:
-                        state = (state-obs_mean)/obs_std
-
                     # update stats
                     length += 1
                     rewards += reward
                     last_state = state
                     last_features = features
                     if args.render or args.record:
-                        env.render(mode='rgb_array') # set to rgb_array by default (assumes running on a headless remote)
+                        env.render()
 
                     timestep_limit = env.spec.tags.get('wrapper_config.TimeLimit.max_episode_steps')
                     if timestep_limit is None: timestep_limit = env.spec.timestep_limit
@@ -114,11 +83,11 @@ def inference(args):
                         length = 0
                         rewards = 0
                         if args.render or args.record:
-                            env.render(mode='rgb_array')
+                            env.render()
                         break
 
-    logger.info('Finished %d true episodes.', args.num_episodes)
-    env.close()
+        logger.info('Finished %d true episodes.', args.num_episodes)
+        env.close()
 
 
 def main(_):
@@ -127,12 +96,13 @@ def main(_):
     parser.add_argument('--outdir', default="../models/output", help='Output log directory')
     parser.add_argument('--env-id', default="doom", help='Environment id')
     parser.add_argument('--record', action='store_true', help="Record the policy running video")
-    parser.add_argument('--render', action='store_true', help="Render the gym environment video online")
+    parser.add_argument('--render', action='store_true',
+                        help="Render the gym environment video online")
     parser.add_argument('--num-episodes', type=int, default=2, help="Number of episodes to run")
-    parser.add_argument('--greedy', action='store_true', help="Default sampled policy. This option does argmax")
-    parser.add_argument('--random', action='store_true', help="Default sampled policy. This option does random policy")
-    parser.add_argument('--obs-norm', action='store_true', help="Whether or not you should normalize the observations")
-    parser.add_argument('--demo', action='store_true', help='Whether or not youre using the demo model provided by the authors')
+    parser.add_argument('--greedy', action='store_true',
+                        help="Default sampled policy. This option does argmax.")
+    parser.add_argument('--random', action='store_true',
+                        help="Default sampled policy. This option does random policy.")
     args = parser.parse_args()
     inference(args)
 

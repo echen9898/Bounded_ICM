@@ -10,10 +10,8 @@ import gym
 from envs import create_env
 from worker import FastSaver
 from model import LSTMPolicy
-from pyvirtualdisplay import Display
 import utils
 import distutils.version
-from multiprocessing import Lock
 use_tf12_api = distutils.version.LooseVersion(tf.VERSION) >= distutils.version.LooseVersion('0.12.0')
 
 logger = logging.getLogger(__name__)
@@ -24,32 +22,22 @@ def inference(args):
     """
     It only restores LSTMPolicy architecture, and does inference using that.
     """
-    # virtual display (headless remotes)
-    virtual_display = Display(visible=0, size=(1400, 900))
-    virtual_display.start()
-
-    # OBSERVATION NORMALIZATION
-
     # get address of checkpoints
     indir = os.path.join(args.log_dir, 'train')
     outdir = os.path.join(args.log_dir, 'inference') if args.out_dir is None else args.out_dir
-
-    # ---------------------------------------------------------------------------------------------------------------------------------------------------------
-    if not args.demo:
-        with open(indir + '/checkpoint', 'r') as f:
-            first_line = f.readline().strip()
-        ckpt = first_line.split(' ')[-1].split('/')[-1][:-1]
-        ckpt = ckpt.split('-')[-1]
-        ckpt = indir + '/model.ckpt-' + ckpt
-    # ---------------------------------------------------------------------------------------------------------------------------------------------------------
+    with open(indir + '/checkpoint', 'r') as f:
+        first_line = f.readline().strip()
+    ckpt = first_line.split(' ')[-1].split('/')[-1][:-1]
+    ckpt = ckpt.split('-')[-1]
+    ckpt = indir + '/model.ckpt-' + ckpt
 
     # define environment
     if args.record:
         env = create_env(args.env_id, client_id='0', remotes=None, envWrap=args.envWrap, designHead=args.designHead,
-                            record=True, record_frequency=1, noop=args.noop, acRepeat=args.acRepeat, outdir=outdir)
+                            record=True, noop=args.noop, acRepeat=args.acRepeat, outdir=outdir)
     else:
         env = create_env(args.env_id, client_id='0', remotes=None, envWrap=args.envWrap, designHead=args.designHead,
-                            record=False, noop=args.noop, acRepeat=args.acRepeat)
+                            record=True, noop=args.noop, acRepeat=args.acRepeat)
     numaction = env.action_space.n
 
     with tf.device("/cpu:0"):
@@ -91,20 +79,7 @@ def inference(args):
             logger.info("Initializing all parameters.")
             sess.run(init_all_op)
             logger.info("Restoring trainable global parameters.")
-
-            # ---------------------------------------------------------------------------------------------------------------------------------------------------------
-            if args.demo:
-                if 'mario' in args.env_id.lower(): graph_path = '../results/mario/mario_ICM.meta'
-                elif 'very' in args.env_id.lower(): graph_path = '../results/doom/doomVerySparse_ICM.meta'
-                elif 'sparse' in args.env_id.lower(): graph_path = '../results/doom/doomSparse_ICM.meta'
-                else: graph_path = '../results/doom/doom_ICM.meta'
-                print('USING DEMO MODEL: {}'.format(graph_path))
-                saver = tf.train.import_meta_graph(graph_path, clear_devices=True)
-                saver.restore(sess, graph_path[:-5])
-            else:
-                saver.restore(sess, ckpt)
-            # ---------------------------------------------------------------------------------------------------------------------------------------------------------
-
+            saver.restore(sess, ckpt)
             logger.info("Restored model was trained for %.2fM global steps", sess.run(policy.global_step)/1000000.)
             # saving with meta graph:
             # metaSaver = tf.train.Saver(variables_to_restore)
@@ -145,6 +120,7 @@ def inference(args):
                             stepAct = prob_action.argmax()  # greedy policy
                         else:
                             stepAct = action.argmax()
+                    # print(stepAct, prob_action.argmax(), prob_action)
                     state, reward, terminal, info = env.step(stepAct)
 
                     # update stats
@@ -153,7 +129,7 @@ def inference(args):
                     last_state = state
                     last_features = features
                     if args.render or args.record:
-                        env.render(mode='rgb_array')
+                        env.render()
                     if args.recordSignal:
                         signalCount += 1
                         Image.fromarray((255*last_state[..., -1]).astype('uint8')).save(outdir + '/recordedSignal/ep_%02d/%06d.jpg'%(i,signalCount))
@@ -195,35 +171,42 @@ def inference(args):
         logger.info('Finished %d true episodes.', args.num_episodes)
         if 'distance' in info:
             print('Mario Distances:', mario_distances)
-            print('Mean Distance: {} +/- {}'.format(np.mean(mario_distances), np.std(mario_distances)))
             np.save(outdir + '/distances.npy', mario_distances)
-
-    env.close()
+        env.close()
 
 
 def main(_):
     parser = argparse.ArgumentParser(description=None)
     parser.add_argument('--log-dir', default="tmp/doom", help='input model directory')
     parser.add_argument('--out-dir', default=None, help='output log directory. Default: log_dir/inference/')
-    parser.add_argument('--env-id', default="doom", help='Environment id')
-    parser.add_argument('--record', action='store_true', help="Record the gym environment video -- user friendly")
-    parser.add_argument('--recordSignal', action='store_true', help="Record images of true processed input to network")
-    parser.add_argument('--render', action='store_true', help="Render the gym environment video online")
-    parser.add_argument('--envWrap', action='store_true', help="Preprocess input in env_wrapper (no change in input size or network)")
-    parser.add_argument('--designHead', type=str, default='universe', help="Network deign head: nips or nature or doom or universe(default)")
-    parser.add_argument('--num-episodes', type=int, default=2, help="Number of episodes to run")
-    parser.add_argument('--noop', action='store_true', help="Add 30-noop for inference too (recommended by Nature paper, don't know?)")
-    parser.add_argument('--acRepeat', type=int, default=1, help="Actions to be repeated at inference. 0 means default. applies iff envWrap is True.")
-    parser.add_argument('--greedy', action='store_true', help="Default sampled policy. This option does argmax.")
-    parser.add_argument('--random', action='store_true', help="Default sampled policy. This option does random policy.")
+    parser.add_argument('--env-id', default="PongDeterministic-v3", help='Environment id')
+    parser.add_argument('--record', action='store_true',
+                        help="Record the gym environment video -- user friendly")
+    parser.add_argument('--recordSignal', action='store_true',
+                        help="Record images of true processed input to network")
+    parser.add_argument('--render', action='store_true',
+                        help="Render the gym environment video online")
+    parser.add_argument('--envWrap', action='store_true',
+                        help="Preprocess input in env_wrapper (no change in input size or network)")
+    parser.add_argument('--designHead', type=str, default='universe',
+                        help="Network deign head: nips or nature or doom or universe(default)")
+    parser.add_argument('--num-episodes', type=int, default=2,
+                        help="Number of episodes to run")
+    parser.add_argument('--noop', action='store_true',
+                        help="Add 30-noop for inference too (recommended by Nature paper, don't know?)")
+    parser.add_argument('--acRepeat', type=int, default=0,
+                        help="Actions to be repeated at inference. 0 means default. applies iff envWrap is True.")
+    parser.add_argument('--greedy', action='store_true',
+                        help="Default sampled policy. This option does argmax.")
+    parser.add_argument('--random', action='store_true',
+                        help="Default sampled policy. This option does random policy.")
     parser.add_argument('--default', action='store_true', help="run with default params")
-    parser.add_argument('--demo', action='store_true', help='Whether or not youre using the demo model provided by the authors')
     args = parser.parse_args()
     if args.default:
         args.envWrap = True
         args.acRepeat = 1
     if args.acRepeat <= 0:
-        print('Using default action repeat (i.e. 4 for Doom, 6 for Mario). Min value that can be set is 1.')
+        print('Using default action repeat (i.e. 4). Min value that can be set is 1.')
     inference(args)
 
 if __name__ == "__main__":

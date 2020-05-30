@@ -33,21 +33,13 @@ TRAINING_PARAMS = {
     'savio':False,
     'default':False,
     'pretrain':None,
-    'record_frequency':300, # in episodes
-    'record_dir':'tmp/model/videos',
-    'bonus_bound':-1.0,
-    'adv_norm':False,
-    'obs_norm':False,
-    'rew_norm':False,
-    'backup_bound':-1.0,
-    'horizon':1,
-    'mstep_mode':'sum',
-    'multi_envs_doom':False
+    'record_frequency':200, # in episodes
+    'record_dir':'tmp/model/videos'
 }
 
 # arguments with 'action = store_true' in train.py
 STORE_TRUE_TRAIN = {'dry_run', 'envWrap', 'noReward', 'noLifeReward', 
-                    'savio', 'default', 'adv_norm', 'obs_norm', 'rew_norm', 'multi_envs_doom'}
+                    'savio', 'default', 'visualise'}
 
 # default arguments for demonstration operations
 DEMO_PARAMS = {
@@ -134,16 +126,8 @@ parser.add_argument('-expId', type=int, default=0, help='Experiment Id >=0. Need
 parser.add_argument('-savio', type=bool, default=False, help='Savio or KNL cpu cluster hacks')
 parser.add_argument('-default', type=bool, default=False, help='run with default params')
 parser.add_argument('-pretrain', type=str, default=None, help='Checkpoint dir (generally ..../train/) to load from')
-parser.add_argument('-record-frequency', type=int, default=300, help='Interval (in episode ids) between saved videos. 300 works well for mario, 50 is better for doom.')
+parser.add_argument('-record-frequency', type=int, default=200, help='Interval (in episode ids) between saved videos. 300 works well for mario, 50 is better for doom.')
 parser.add_argument('-record-dir', type=str, default='tmp/model/videos', help='Path to directory where training videos should be saved')
-parser.add_argument('-bonus-bound', type=float, default=-1.0, help='Intrinsic reward bound. If reward is above this, its set to 0')
-parser.add_argument('-adv-norm', type=bool, default=False, help='Normalize batch advantages after each rollout')
-parser.add_argument('-obs-norm', type=bool, default=False, help='Locally tandardize observations (pixelwise, individually by channel)')
-parser.add_argument('-rew-norm', type=bool, default=False, help='Normalize batch rewards by dividing by running standard deviation')
-parser.add_argument('-backup-bound', type=float, default=-1.0, help='Bound the intrinsic reward discounted sum (backup term) before computing network targets')
-parser.add_argument('-horizon', type=int, default=1, help='Multi-step prediction horizon')
-parser.add_argument('-mstep-mode', type=str, default='sum', help='How to process the multi-step prediction rewards into a single reward (sum, dissum, max)')
-parser.add_argument('-multi-envs-doom', type=bool, default=False, help='If youre running doom labyrinth, whether or not to use different maps to train on')
 
 # DEMO OP ARGUMENTS
 # parser.add_argument('--ckpt', default='../models/doom/doom_ICM', help='Checkpoint name')
