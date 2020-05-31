@@ -197,7 +197,7 @@ def dict_to_command(args, store_true_args, default_params, mode):
             if value in {'True', True}:
                 cmd += '--{} '.format(argument.replace('_', '-'))
             continue
-        if value is not None:
+        if value not in {None, 'None'}:
             cmd += '--{} {} '.format(argument.replace('_', '-'), value)
     return cmd
 
