@@ -16,7 +16,7 @@ services:
       - ./curiosity/params:/data/db
   trainer:
     build: .
-    image: echen9898/bounded_icm:0.2.0
+    image: echen9898/bounded_icm:0.1.10
     container_name: 'trainer'
     volumes:
       - ./:/bounded_curiosity
