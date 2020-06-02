@@ -104,3 +104,10 @@ register(
     reward_threshold=0.5
 )
 
+register(
+    id='VizdoomLabyrinthManyFixedAngle-v0',
+    entry_point='vizdoomgym.envs:VizdoomLabyrinthManyFixedAngle',
+    max_episode_steps=2099, # This value must be one less than the episode_timeout value set in the .cfg file
+    reward_threshold=0.5
+)
+

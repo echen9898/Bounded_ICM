@@ -54,8 +54,9 @@ DOOM_SETTINGS = [
     ['my_way_home.cfg', 'my_way_home_sparse.wad', '', 5, [13, 14, 15], -0.22, 0.5],                  # 9 - MyWayHomeFixed
     ['my_way_home.cfg', 'my_way_home_verySparse.wad', '', 5, [13, 14, 15], -0.22, 0.5],              # 10 - MyWayHomeFixed15
     ['labyrinth.cfg', 'labyrinth_single.wad', 'map01', 5, [13, 14, 15], -0.22, 0.5],                 # 11 - Labyrinth Map - one map
-    ['labyrinth.cfg', 'labyrinth_many.wad', 'map01', 5, [13, 14, 15], -0.22, 0.5],                   # 12 - Labyrinth Map - many maps
-    ['labyrinth.cfg', 'labyrinth_many_fixed.wad', 'map01', 5, [13, 14, 15], -0.22, 0.5]              # 13 - Labyrinth Map - many maps, fixed spawn
+    ['labyrinth.cfg', 'labyrinth_many.wad', 'map01', 5, [13, 14, 15], -0.22, 0.5],                   # 12 - Labyrinth Map - many maps, random spawn, random angle
+    ['labyrinth.cfg', 'labyrinth_many_fixed.wad', 'map01', 5, [13, 14, 15], -0.22, 0.5],             # 13 - Labyrinth Map - many maps, fixed spawn, random angle
+    ['labyrinth.cfg', 'labyrinth_many_fixed2.wad', 'map01', 5, [13, 14, 15], -0.22, 0.5]             # 14 - Labyrinth Map - many maps, fixed spawn, fixed angle
 ]
 
 # Singleton pattern

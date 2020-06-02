@@ -25,12 +25,22 @@ class FastSaver(tf.train.Saver):
 
 def run(args, server):
 
-    if args.visualise:
-        virtual_display = Display(visible=0, size=(1400, 900))
-        virtual_display.start()
+    # if args.visualise:
+    #     virtual_display = Display(visible=0, size=(1400, 900))
+    #     virtual_display.start()
+
+    if 'labyrinth' in args.env_id.lower() and args.task % 8 == 0: 
+        visualise = args.visualise
+        record_dir = args.record_dir + '/task{}'.format(args.task)
+    elif args.task == 0:
+        visualise = args.visualise
+        record_dir = args.record_dir + '/task0'
+    else:
+        visualise = False
+        record_dir = None
 
     env = create_env(args.env_id, client_id=str(args.task), remotes=args.remotes, envWrap=args.envWrap, designHead=args.designHead,
-                        noLifeReward=args.noLifeReward, record=args.visualise, record_frequency=args.record_frequency, outdir=args.record_dir)
+                        noLifeReward=args.noLifeReward, record=visualise, record_frequency=args.record_frequency, outdir=record_dir)
     trainer = A3C(env, args.task, args.visualise, args.unsup, args.envWrap, args.designHead, args.noReward)
 
     # logging

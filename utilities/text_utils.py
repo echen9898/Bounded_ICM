@@ -135,7 +135,7 @@ def create_usertag(args):
     if args.pretrain:
         pretrain_tag = args.pretrain.split('/')[-3].split('_')
         algo = pretrain_tag[0]
-        if 'very' in args.env_id.lower(): 
+        if 'very' in args.env_id.lower():
             setting = pretrain_tag[1] + '_ftVerySparse'
         elif 'sparse' in args.env_id.lower(): 
             setting = pretrain_tag[1 ] + '_ftSparse'

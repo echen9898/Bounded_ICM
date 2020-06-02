@@ -39,10 +39,12 @@ def create_doom(env_id, client_id, envWrap=True, record=False, outdir=None,
     if 'labyrinth' in env_id.lower():
         if 'single' in env_id.lower():
             env_id = 'VizdoomLabyrinthSingle-v0' # SINGLE MAP
+        elif 'angle' in env_id.lower(): # MANY MAPS, FIXED SPAWN, FIXED ANGLE
+            env_id = 'VizdoomLabyrinthManyFixedAngle-v0'
         elif 'fix' in env_id.lower():
-            env_id = 'VizdoomLabyrinthManyFixed-v0' # MANY MAPS, FIXED SPAWN
+            env_id = 'VizdoomLabyrinthManyFixed-v0' # MANY MAPS, FIXED SPAWN, RANDOM ANGLE
         else:
-            env_id = 'VizdoomLabyrinthMany-v0' # MANY MAPS, RANDOM SPAWN
+            env_id = 'VizdoomLabyrinthMany-v0' # MANY MAPS, RANDOM SPAWN, RANDOM ANGLE
 
     elif 'very' in env_id.lower():
         env_id = 'VizdoomMyWayHomeFixed15-v0' # VERY SPARSE TEST ENV
@@ -109,7 +111,6 @@ def create_mario(env_id, client_id, envWrap=True, record=False, outdir=None,
     acwrapper = wrappers.ToDiscrete()
     env = modewrapper(acwrapper(env))
     env = env_wrapper.MarioEnv(env)
-
     if record and outdir is not None:
         env = gym.wrappers.Monitor(env, outdir, video_callable=lambda episode_id: episode_id%record_frequency==0, force=True)
 
@@ -128,7 +129,7 @@ def create_mario(env_id, client_id, envWrap=True, record=False, outdir=None,
     env = Vectorize(env)
     env = DiagnosticsInfo(env)
     env = Unvectorize(env)
-    # env.close() # TODO: think about where to put env.close !
+    # env.close() # TODO: think about where to put env.close !\
     return env
 
 def create_flash_env(env_id, client_id, remotes, **_):
