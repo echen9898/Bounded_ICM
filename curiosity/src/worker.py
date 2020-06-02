@@ -25,16 +25,16 @@ class FastSaver(tf.train.Saver):
 
 def run(args, server):
 
-    # if args.visualise:
-    #     virtual_display = Display(visible=0, size=(1400, 900))
-    #     virtual_display.start()
+    if args.visualise:
+        virtual_display = Display(visible=0, size=(1400, 900))
+        virtual_display.start()
 
     if 'labyrinth' in args.env_id.lower() and args.task % 8 == 0: 
         visualise = args.visualise
-        record_dir = args.record_dir + '/task{}'.format(args.task)
+        record_dir = args.record_dir + '/runner{}'.format(args.task)
     elif args.task == 0:
         visualise = args.visualise
-        record_dir = args.record_dir + '/task0'
+        record_dir = args.record_dir
     else:
         visualise = False
         record_dir = None
