@@ -12,6 +12,7 @@ from worker import FastSaver
 from model import LSTMPolicy
 import utils
 import distutils.version
+from pyvirtualdisplay import Display
 use_tf12_api = distutils.version.LooseVersion(tf.VERSION) >= distutils.version.LooseVersion('0.12.0')
 
 logger = logging.getLogger(__name__)
@@ -31,10 +32,13 @@ def inference(args):
     ckpt = ckpt.split('-')[-1]
     ckpt = indir + '/model.ckpt-' + ckpt
 
+    virtual_display = Display(visible=0, size=(1400, 900))
+    virtual_display.start()
+
     # define environment
     if args.record:
         env = create_env(args.env_id, client_id='0', remotes=None, envWrap=args.envWrap, designHead=args.designHead,
-                            record=True, noop=args.noop, acRepeat=args.acRepeat, outdir=outdir)
+                            record=True, noop=args.noop, acRepeat=args.acRepeat, outdir=outdir, record_frequency=1)
     else:
         env = create_env(args.env_id, client_id='0', remotes=None, envWrap=args.envWrap, designHead=args.designHead,
                             record=True, noop=args.noop, acRepeat=args.acRepeat)

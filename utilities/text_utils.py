@@ -40,6 +40,9 @@ def wrap_print(text):
     print('-'*60)
     print('\n')
 
+def pretty_list(iterable):
+    for el in iterable:
+        print('\t [{}] {}'.format(iterable.index(el)+1, el))
 
 def format(sheet):
     ''' Apply default styling to the entire spreadsheet '''
