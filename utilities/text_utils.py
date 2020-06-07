@@ -34,6 +34,7 @@ STYLES = {
 }
 
 def wrap_print(text):
+    '''Print a string wrapped and padded in a dashed line frame'''
     print('\n')
     print('-'*60)
     print(text)
@@ -41,11 +42,12 @@ def wrap_print(text):
     print('\n')
 
 def pretty_list(iterable):
-    for el in iterable:
-        print('\t [{}] {}'.format(iterable.index(el)+1, el))
+    '''Print a list in an indented format with proper indexes'''
+    for element in iterable: 
+        print('\t [{}] {}'.format(iterable.index(element)+1, element))
 
 def format(sheet):
-    ''' Apply default styling to the entire spreadsheet '''
+    '''Apply styling as defined in global STYLES to an entire excel spreadsheet'''
     row_index = 0
     for row in sheet.rows:
         if row_index == ROWS['header']: row_type = 'header'
@@ -57,14 +59,22 @@ def format(sheet):
         row_index += 1
 
 def row_generator(sheet):
-    ''' A generator for rows in an excel sheet '''
+    '''A generator that yields rows in an excel sheet'''
     for row in sheet.iter_rows():
         yield [cell.value for cell in row]
 
 def row_matrix(sheet, rows=(None, None)):
-    ''' Returns an excel sheet in matrix format. You can
+    '''
+    Returns an excel sheet in matrix format. You can
     optionally specify a range (in rows) and only this range
     will be returned
+
+    Args:
+        (excel) sheet: an openpyxl sheet
+        *(tuple) rows: an optional tuple specifying a (lower bound, upper bound)
+                        range of rows to convert to matrix form
+    Returns:
+        (list) table: a 2D list representing the excel sheet
     '''
     table = list()
     for row in sheet.iter_rows(min_row=rows[0], max_row=rows[1]):
@@ -85,7 +95,7 @@ def get_row_index(query, registry_path, column=None):
     return None
 
 def get_value(usertag, key, registry_path):
-    ''' Returns usertag specific information by key. '''
+    '''Returns usertag specific information by key'''
     book = load_workbook(registry_path, read_only=True)
     table = row_matrix(book['Experiments'])
     row_index = get_row_index(usertag, registry_path, 1)
@@ -216,7 +226,7 @@ def update_experiment_count(usertag, registry_path):
     book.save(registry_path)
 
 def update_registry(args, usertag, seed_num, exp_id, params_id):
-    ''' Update the experiment registry '''
+    '''Update the experiment registry'''
 
     if args.tag is None and not args.pretrain: # only count new trials (not seeds)
         update_experiment_count(usertag, args.registry)

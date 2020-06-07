@@ -1,19 +1,21 @@
 
 version: '3.3'
 services:
-  db:
-    image: 'mongo'
-    container_name: 'parameter_db'
-    restart: always
-    ports:
-      - '27017:27017'
-    environment:
-      - MONGO_INITDB_DATABASE=params
-      - MONGO_INITDB_ROOT_USERNAME=default
-      - MONGO_INITDB_ROOT_PASSWORD=default
-    volumes:
-      - ./params_manager/container_init:/docker-entrypoint-initdb.d
-      - ./curiosity/params:/data/db
+  # -------- USED FOR LOCAL TESTING -------- #
+  # db:
+  #   image: 'mongo'
+  #   container_name: 'parameter_db'
+  #   restart: always
+  #   ports:
+  #     - '27017:27017'
+  #   environment:
+  #     - MONGO_INITDB_DATABASE=params
+  #     - MONGO_INITDB_ROOT_USERNAME=default
+  #     - MONGO_INITDB_ROOT_PASSWORD=default
+  #   volumes:
+  #     - ./params_manager/container_init:/docker-entrypoint-initdb.d
+  #     - ./curiosity/params:/data/db
+  # ---------------------------------------- #
   trainer:
     build: .
     image: echen9898/bounded_icm:0.1.10
@@ -27,6 +29,7 @@ services:
       - /tmp/.X11-unix:/tmp/.X11-unix
     ports:
       - '8080:8080'
+      - '12345:12345'
     tty: true
     stdin_open: true
     environment:

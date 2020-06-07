@@ -215,7 +215,23 @@ class ExperimentParams(ParameterObject):
 # ------------------------------------------- MAIN METHOD ------------------------------------------- #
 
 def generate_commands(args):
-    ''' Generate relevant commands based on the specified operation '''
+    ''' 
+    Generate relevant shell commands based on input arguments. These commands
+    are then used to:
+        1) run experiments
+        2) perform swapping operations to switch or store models
+        3) run inference
+        4) or run plotting operations. 
+
+    Args:
+        (dict) args: user specified command line arguments passed in through argparse
+
+    Returns:
+        (str) commands: the generated shell command
+        (dict) params: the generated shell command in storable format for the mongo database (if running experiment)
+        (str) usertag: the experiments nametag (if running experiment)
+        (bool) save_params: whether or not to ask the user save generated parameters (if running experiment)
+    '''
     py_cmd = 'python'
     py3_cmd = 'python3'
     commands = list() # commands that will eventually be executed
@@ -430,6 +446,16 @@ def generate_commands(args):
 
 
 def run():
+    '''
+    Generate commands based on user input, and then run said commands. Handles
+    database storage, and experiment log updates as well.
+
+    Args:
+        Nothing
+
+    Returns:
+        Nothing
+    '''
     args = parser.parse_args()
 
     commands, params, usertag, save_params = generate_commands(args)
