@@ -105,7 +105,6 @@ parser = argparse.ArgumentParser(description='Run high level tasks')
 
 # GENERAL ARGUMENTS
 parser.add_argument('-op', default=None, help='Which operation to run: swap, train, demo, or plot')
-parser.add_argument('-bypass-input', default=False, help='Bypass all user inputs, and just select Y for all. Used to automate tasks')
 parser.add_argument('-registry', default='experiment_log.xlsx', help='Path to excel file containing information for all experiments')
 parser.add_argument('-tag', default=None, help='The name associated with the model you want to swap, run or do inference on')
 
@@ -249,14 +248,10 @@ def generate_commands(args):
     elif args.op == 'train':
         
         if os.path.isdir('./curiosity/src/tmp'):
-            if not bool(args.bypass_input):
-                if sys.version_info[0] == 2: user_inp = raw_input('MODEL FILES PRESENT, RESUME TRAINING? -> (Y/N): ')
-                elif sys.version_info[0] == 3: user_inp = input('MODEL FILES PRESENT, RESUME TRAINING? -> (Y/N): ')
-            else:
-                user_inp = 'Y'
+            if sys.version_info[0] == 2: user_inp = raw_input('MODEL FILES PRESENT, RESUME TRAINING? -> (Y/N): ')
+            elif sys.version_info[0] == 3: user_inp = input('MODEL FILES PRESENT, RESUME TRAINING? -> (Y/N): ')
             if user_inp != 'Y': 
-                if not bool(args.bypass_input):
-                    user_inp = raw_input('REMOVE TMP FOLDER? -> (Y/N): ')
+                user_inp = raw_input('REMOVE TMP FOLDER? -> (Y/N): ')
                 if user_inp != 'Y':
                     wrap_print('---- Exiting with no changes')
                 elif user_inp == 'Y':
@@ -468,11 +463,8 @@ def run():
     print('-'*70)
     print(commands)
     print('#'*70)
-    if not bool(args.bypass_input):
-        if sys.version_info[0] == 2: confirmation = raw_input('RUN COMMANDS? -> (Y/N): ')
-        elif sys.version_info[0] == 3: confirmation = input('RUN COMMANDS? -> (Y/N): ')
-    else:
-        confirmation = 'Y'
+    if sys.version_info[0] == 2: confirmation = raw_input('RUN COMMANDS? -> (Y/N): ')
+    elif sys.version_info[0] == 3: confirmation = input('RUN COMMANDS? -> (Y/N): ')
     if confirmation == 'Y':
         if args.op not in  {'swap', 'plot'}: os.chdir('./curiosity/src')
         os.system(commands)

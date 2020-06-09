@@ -33,16 +33,23 @@ STYLES = {
     'entry_font':Font(name='Calibri', size=11, color='FF000000')
 }
 
+def pad_print(text):
+    '''Print a string padded with new lines'''
+    print('\n{}\n'.format(text))
+
 def wrap_print(text):
     '''Print a string wrapped and padded in a dashed line frame'''
-    print('\n')
-    print('-'*60)
-    print(text)
-    print('-'*60)
-    print('\n')
+    pad_print('-'*60 + '\n' + text + '\n' + '-'*60)
 
-def pretty_list(iterable):
+def wrap_input(query):
+    '''Display prompt for user input wrapped and padded in a dashed line frame'''
+    print('\n')
+    response = input(query)
+    return response
+
+def pretty_list(iterable, header_text):
     '''Print a list in an indented format with proper indexes'''
+    wrap_print(header_text)
     for element in iterable: 
         print('\t [{}] {}'.format(iterable.index(element)+1, element))
 
