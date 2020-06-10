@@ -1,4 +1,5 @@
 from __future__ import print_function
+import os, sys
 from PIL import Image
 from gym.spaces.box import Box
 import numpy as np
@@ -39,8 +40,8 @@ def create_doom(env_id, client_id, envWrap=True, record=False, outdir=None,
     if 'labyrinth' in env_id.lower():
         if 'single' in env_id.lower():
             env_id = 'VizdoomLabyrinthSingle-v0' # SINGLE MAP
-        elif 'angle' in env_id.lower(): # MANY MAPS, FIXED SPAWN, FIXED ANGLE
-            env_id = 'VizdoomLabyrinthManyFixedAngle-v0'
+        elif 'angle' in env_id.lower(): 
+            env_id = 'VizdoomLabyrinthManyFixedAngle-v0' # MANY MAPS, FIXED SPAWN, FIXED ANGLE
         elif 'fix' in env_id.lower():
             env_id = 'VizdoomLabyrinthManyFixed-v0' # MANY MAPS, FIXED SPAWN, RANDOM ANGLE
         else:
@@ -50,14 +51,6 @@ def create_doom(env_id, client_id, envWrap=True, record=False, outdir=None,
         env_id = 'VizdoomMyWayHomeFixed15-v0' # VERY SPARSE TEST ENV
     elif 'sparse' in env_id.lower():
         env_id = 'VizdoomMyWayHomeFixed-v0' # SPARSE TEST ENV
-
-    # elif 'fix' in env_id.lower():
-    #     if '1' in env_id or '2' in env_id:
-    #         env_id = 'ppaquette/DoomMyWayHomeFixed' + str(env_id[-2:]) + '-v0'
-    #     elif 'new' in env_id.lower():
-    #         env_id = 'ppaquette/DoomMyWayHomeFixedNew-v0'
-    #     else:
-    #         env_id = 'ppaquette/DoomMyWayHomeFixed-v0'
     else:
         env_id = 'VizdoomMyWayHome-v0' # DENSE TEST ENV
 
@@ -73,7 +66,9 @@ def create_doom(env_id, client_id, envWrap=True, record=False, outdir=None,
     # env = env_wrapper.MakeEnvDynamic(env)  # to add stochasticity
 
     if record and outdir is not None:
-        env = gym.wrappers.Monitor(env, outdir, video_callable=lambda episode_id: episode_id%record_frequency==0, force=True)
+        if os.path.isdir('./tmp'): # continuing training, don't erase videos
+            os.system("find . -type f -name '*.json' -delete") # remove monitor files
+        env = gym.wrappers.Monitor(env, outdir, video_callable=lambda episode_id: episode_id%record_frequency==0)
 
     if envWrap:
         fshape = (42, 42)
@@ -112,7 +107,9 @@ def create_mario(env_id, client_id, envWrap=True, record=False, outdir=None,
     env = modewrapper(acwrapper(env))
     env = env_wrapper.MarioEnv(env)
     if record and outdir is not None:
-        env = gym.wrappers.Monitor(env, outdir, video_callable=lambda episode_id: episode_id%record_frequency==0, force=True)
+        if os.path.isdir('./tmp'): # continuing training, don't erase videos
+            os.system("find . -type f -name '*.json' -delete") # remove monitor files
+        env = gym.wrappers.Monitor(env, outdir, video_callable=lambda episode_id: episode_id%record_frequency==0)
 
     if envWrap:
         frame_skip = acRepeat if acRepeat>0 else 6
