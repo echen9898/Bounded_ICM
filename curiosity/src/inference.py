@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 from __future__ import print_function
 import go_vncdriver
 import tensorflow as tf
@@ -8,8 +7,7 @@ import logging
 import os
 import gym
 from envs import create_env
-from worker import FastSaver
-from model import LSTMPolicy
+from model import LSTMPolicy, StatePredictor, StateActionPredictor
 import utils
 import distutils.version
 from pyvirtualdisplay import Display
@@ -18,7 +16,106 @@ use_tf12_api = distutils.version.LooseVersion(tf.VERSION) >= distutils.version.L
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
+# Disables write_meta_graph argument, which freezes entire process and is mostly useless.
+class FastSaver(tf.train.Saver):
+    def save(self, sess, save_path, global_step=None, latest_filename=None,
+             meta_graph_suffix="meta", write_meta_graph=True):
+        super(FastSaver, self).save(sess, save_path, global_step, latest_filename,
+                                    meta_graph_suffix, False)
 
+# Used to run an inference process during training
+class InferenceAgent(object):
+    def __init__(self, env, task, visualise, unsupType, designHead='universe'):
+        self.env = env
+        self.task = task
+        self.visualise = visualise
+        self.unsupType = unsupType
+        self.designHed = designHead
+
+        numaction = env.action_space.n
+        worker_device = "/job:worker/task:{}/cpu:0".format(self.task)
+
+        with tf.device(tf.train.replica_device_setter(1, worker_device=worker_device)):
+            with tf.variable_scope("global"):
+                self.network = LSTMPolicy(env.observation_space.shape, numaction, designHead)
+                self.global_step = tf.get_variable("global_step", [], tf.int32, initializer=tf.constant_initializer(0, dtype=tf.int32),
+                                                   trainable=False)
+                if self.unsupType is not None:
+                    with tf.variable_scope("predictor"):
+                        if 'state' in self.unsupType:
+                            self.ap_network = StatePredictor(env.observation_space.shape, numaction, designHead, unsupType)
+                        else:
+                            self.ap_network = StateActionPredictor(env.observation_space.shape, numaction, designHead)
+
+        with tf.device(worker_device):
+            with tf.variable_scope("local"):
+                self.local_network = LSTMPolicy(env.observation_space.shape, numaction, designHead)
+                self.local_network.global_step = self.global_step
+                sync_var_list = [v1.assign(v2) for v1, v2 in zip(self.local_network.var_list, self.network.var_list)]
+                self.sync = tf.group(*sync_var_list)
+
+    def run_inference(self, sess, env, summary_writer):
+        self.sess = sess
+
+        with self.sess.as_default():
+
+            self.sess.run(self.sync) # pull global parameters
+            print("\n")
+            print("PULLING PARAMS")
+            print("\n")
+            last_state = env.reset()
+            if self.visualise:
+                env.render()
+            length = 0
+            rewards = 0
+            last_features = self.local_network.get_initial_features()  # reset lstm memory
+
+            for _ in range(10): # gather 10 inference runs for each set of global parameters
+
+                while True:
+                    # run policy
+                    fetched = self.local_network.act_inference(last_state, *last_features)
+                    prob_action, action, value_, features = fetched[0], fetched[1], fetched[2], fetched[3:]
+
+                    # run environment: sampled one-hot 'action' (not greedy)
+                    stepAct = action.argmax()
+
+                    # print(stepAct, prob_action.argmax(), prob_action)
+                    state, reward, terminal, info = env.step(stepAct)
+
+                    # update stats
+                    length += 1
+                    rewards += reward
+                    last_state = state
+                    last_features = features
+                    if self.visualise:
+                        env.render()
+
+                    # store relevant summaries
+                    timestep_limit = env.spec.tags.get('wrapper_config.TimeLimit.max_episode_steps')
+                    if timestep_limit is None: timestep_limit = env.spec.timestep_limit
+                    
+                    if terminal or length >= timestep_limit:
+                        summary = tf.Summary()
+                        if 'distance' in info:
+                            summary.value.add(tag='inference_distance', simple_value=info['distance'])
+                        summary_writer.add_summary(summary, self.local_network.global_step.eval())
+                        summary_writer.flush()
+
+                        if length >= timestep_limit or not env.metadata.get('semantics.autoreset'):
+                            last_state = env.reset()
+                        last_features = self.local_network.get_initial_features()  # reset lstm memory
+                        print("Episode finished. Sum of rewards: %.2f. Length: %d." % (rewards, length))
+                        if 'distance' in info:
+                            print('Mario Distance Covered:', info['distance'])
+                        length = 0
+                        rewards = 0
+                        if self.visualise:
+                            env.render()
+                        break
+
+
+# Used to run inference post training
 def inference(args):
     """
     It only restores LSTMPolicy architecture, and does inference using that.
@@ -175,6 +272,8 @@ def inference(args):
         logger.info('Finished %d true episodes.', args.num_episodes)
         if 'distance' in info:
             print('Mario Distances:', mario_distances)
+            print('Mario Distance Mean: ', np.mean(mario_distances))
+            print('Mario Distance Std: ', np.std(mario_distances))
             np.save(outdir + '/distances.npy', mario_distances)
         env.close()
 
@@ -184,26 +283,16 @@ def main(_):
     parser.add_argument('--log-dir', default="tmp/doom", help='input model directory')
     parser.add_argument('--out-dir', default=None, help='output log directory. Default: log_dir/inference/')
     parser.add_argument('--env-id', default="PongDeterministic-v3", help='Environment id')
-    parser.add_argument('--record', action='store_true',
-                        help="Record the gym environment video -- user friendly")
-    parser.add_argument('--recordSignal', action='store_true',
-                        help="Record images of true processed input to network")
-    parser.add_argument('--render', action='store_true',
-                        help="Render the gym environment video online")
-    parser.add_argument('--envWrap', action='store_true',
-                        help="Preprocess input in env_wrapper (no change in input size or network)")
-    parser.add_argument('--designHead', type=str, default='universe',
-                        help="Network deign head: nips or nature or doom or universe(default)")
-    parser.add_argument('--num-episodes', type=int, default=2,
-                        help="Number of episodes to run")
-    parser.add_argument('--noop', action='store_true',
-                        help="Add 30-noop for inference too (recommended by Nature paper, don't know?)")
-    parser.add_argument('--acRepeat', type=int, default=0,
-                        help="Actions to be repeated at inference. 0 means default. applies iff envWrap is True.")
-    parser.add_argument('--greedy', action='store_true',
-                        help="Default sampled policy. This option does argmax.")
-    parser.add_argument('--random', action='store_true',
-                        help="Default sampled policy. This option does random policy.")
+    parser.add_argument('--record', action='store_true', help="Record the gym environment video -- user friendly")
+    parser.add_argument('--recordSignal', action='store_true', help="Record images of true processed input to network")
+    parser.add_argument('--render', action='store_true', help="Render the gym environment video online")
+    parser.add_argument('--envWrap', action='store_true', help="Preprocess input in env_wrapper (no change in input size or network)")
+    parser.add_argument('--designHead', type=str, default='universe', help="Network deign head: nips or nature or doom or universe(default)")
+    parser.add_argument('--num-episodes', type=int, default=2, help="Number of episodes to run")
+    parser.add_argument('--noop', action='store_true', help="Add 30-noop for inference too (recommended by Nature paper, don't know?)")
+    parser.add_argument('--acRepeat', type=int, default=0, help="Actions to be repeated at inference. 0 means default. applies iff envWrap is True.")
+    parser.add_argument('--greedy', action='store_true', help="Default sampled policy. This option does argmax.")
+    parser.add_argument('--random', action='store_true', help="Default sampled policy. This option does random policy.")
     parser.add_argument('--default', action='store_true', help="run with default params")
     args = parser.parse_args()
     if args.default:
@@ -211,6 +300,7 @@ def main(_):
         args.acRepeat = 1
     if args.acRepeat <= 0:
         print('Using default action repeat (i.e. 4). Min value that can be set is 1.')
+
     inference(args)
 
 if __name__ == "__main__":

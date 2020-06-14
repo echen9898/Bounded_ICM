@@ -34,12 +34,13 @@ TRAINING_PARAMS = {
     'default':False,
     'pretrain':None,
     'record_frequency':200, # in episodes
-    'record_dir':'tmp/model/videos'
+    'record_dir':'tmp/model/videos',
+    'inference_process':False
 }
 
 # arguments with 'action = store_true' in train.py
 STORE_TRUE_TRAIN = {'dry_run', 'envWrap', 'noReward', 'noLifeReward', 
-                    'savio', 'default', 'visualise'}
+                    'savio', 'default', 'visualise', 'inference_process'}
 
 # default arguments for demonstration operations
 DEMO_PARAMS = {
@@ -128,6 +129,7 @@ parser.add_argument('-default', type=bool, default=False, help='run with default
 parser.add_argument('-pretrain', type=str, default=None, help='Checkpoint dir (generally ..../train/) to load from')
 parser.add_argument('-record-frequency', type=int, default=200, help='Interval (in episode ids) between saved videos. 300 works well for mario, 50 is better for doom.')
 parser.add_argument('-record-dir', type=str, default='tmp/model/videos', help='Path to directory where training videos should be saved')
+parser.add_argument('-inference-process', type=bool, default=False, help='Whether or not to run an extra process that performs inference using global parameters')
 
 # DEMO OP ARGUMENTS
 # parser.add_argument('--ckpt', default='../models/doom/doom_ICM', help='Checkpoint name')
@@ -385,6 +387,10 @@ def generate_commands(args):
             elif arg == 'out_dir':
                 params[arg] = '{}/{}/demos'.format(inf_path, args.tag)
             elif arg in params: params[arg] = getattr(args, arg)
+
+        # clean previous demo directory if present
+        if os.path.isdir('{}/{}/demos'.format(result_path, args.tag)):
+            os.system('cd {}/{}/demos && rm -r *'.format(result_path, args.tag))
 
         # generate infernece command
         cmd = '{} inference.py {}'.format(py_cmd, dict_to_command(params, STORE_TRUE_INF, INF_PARAMS, args.op))

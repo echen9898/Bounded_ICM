@@ -23,6 +23,7 @@ parser.add_argument('--default', action='store_true', help="run with default par
 parser.add_argument('--pretrain', type=str, default=None, help="Checkpoint dir (generally ..../train/) to load from.")
 parser.add_argument('--record-frequency', type=int, default=200, help='Interval (in episode ids) between saved videos. 300 works well for mario, 50 is better for doom.')
 parser.add_argument('--record-dir', type=str, default='tmp/model/videos', help='Path to directory where training videos should be saved')
+parser.add_argument('--inference-process', action='store_true', help='Whether or not to run an extra process that performs inference using global parameters')
 
 def new_cmd(session, name, cmd, mode, logdir, shell):
     if isinstance(cmd, (list, tuple)):
@@ -39,7 +40,7 @@ def create_commands(session, num_workers, remotes, env_id, logdir, shell='bash',
                     mode='tmux', visualise=False, envWrap=False, designHead=None,
                     unsup=None, noReward=False, noLifeReward=False, psPort=12222,
                     delay=0, savio=False, pretrain=None, record_frequency=None, 
-                    record_dir='tmp/model/videos'):
+                    record_dir='tmp/model/videos', inference_process=False):
     # for launching the TF workers and for launching tensorboard
     py_cmd = 'python' if savio else sys.executable
     base_cmd = [
@@ -68,6 +69,8 @@ def create_commands(session, num_workers, remotes, env_id, logdir, shell='bash',
         base_cmd += ['--noLifeReward']
     if pretrain is not None:
         base_cmd += ['--pretrain', pretrain]
+    if inference_process:
+        base_cmd += ['--inference-process']
 
     if remotes is None:
         remotes = ["1"] * num_workers
@@ -79,6 +82,8 @@ def create_commands(session, num_workers, remotes, env_id, logdir, shell='bash',
     for i in range(num_workers):
         cmds_map += [new_cmd(session,
             "w-%d" % i, base_cmd + ["--job-name", "worker", "--task", str(i), "--remotes", remotes[i]], mode, logdir, shell)]
+    if inference_process:
+        cmds_map += [new_cmd(session, "inference", base_cmd + ["--job-name", "worker", "--task", str(num_workers)], mode, logdir, shell)]
 
     # No tensorboard or htop window if running multiple experiments per machine
     if session == 'a3c':
@@ -138,7 +143,8 @@ def run():
                                     unsup=args.unsup, noReward=args.noReward,
                                     noLifeReward=args.noLifeReward, psPort=psPort,
                                     delay=delay, savio=args.savio, pretrain=args.pretrain,
-                                    record_frequency=args.record_frequency, record_dir=args.record_dir)
+                                    record_frequency=args.record_frequency, record_dir=args.record_dir,
+                                    inference_process=args.inference_process)
     if args.dry_run:
         print("Dry-run mode due to -n flag, otherwise the following commands would be executed:")
     else:
