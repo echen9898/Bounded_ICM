@@ -30,7 +30,8 @@ class InferenceAgent(object):
         self.task = task
         self.visualise = visualise
         self.unsupType = unsupType
-        self.designHed = designHead
+        self.designHead = designHead
+        self.num_episodes = 5
 
         numaction = env.action_space.n
         worker_device = "/job:worker/task:{}/cpu:0".format(self.task)
@@ -69,8 +70,9 @@ class InferenceAgent(object):
             length = 0
             rewards = 0
             last_features = self.local_network.get_initial_features()  # reset lstm memory
+            distances = list() # collect distances for these ten episodes
 
-            for _ in range(10): # gather 10 inference runs for each set of global parameters
+            for episode in range(self.num_episodes): # gather a certain amount of inference runs for each set of global parameters
 
                 while True:
                     # run policy
@@ -97,8 +99,8 @@ class InferenceAgent(object):
                     
                     if terminal or length >= timestep_limit:
                         summary = tf.Summary()
-                        if 'distance' in info:
-                            summary.value.add(tag='inference_distance', simple_value=info['distance'])
+                        if 'distance' in info and episode == self.num_episodes-1:
+                            summary.value.add(tag='inference_distance', simple_value=np.mean(distances))
                         summary_writer.add_summary(summary, self.local_network.global_step.eval())
                         summary_writer.flush()
 
@@ -108,6 +110,7 @@ class InferenceAgent(object):
                         print("Episode finished. Sum of rewards: %.2f. Length: %d." % (rewards, length))
                         if 'distance' in info:
                             print('Mario Distance Covered:', info['distance'])
+                            distances.append(info['distance'])
                         length = 0
                         rewards = 0
                         if self.visualise:
