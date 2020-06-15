@@ -101,7 +101,6 @@ class InferenceAgent(object):
                         summary = tf.Summary()
                         if 'distance' in info and episode == self.num_episodes-1:
                             summary.value.add(tag='inference_distance', simple_value=np.mean(distances))
-                        summary_writer.add_summary(summary, self.local_network.global_step.eval())
                         summary_writer.flush()
 
                         if length >= timestep_limit or not env.metadata.get('semantics.autoreset'):

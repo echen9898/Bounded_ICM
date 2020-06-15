@@ -2,6 +2,7 @@ from __future__ import print_function
 from collections import namedtuple
 import numpy as np
 import tensorflow as tf
+from envs import create_env
 from model import LSTMPolicy, StateActionPredictor, StatePredictor
 import six.moves.queue as queue
 import scipy.signal
@@ -110,7 +111,7 @@ class RunnerThread(threading.Thread):
     that would constantly interact with the environment and tell it what to do.  This thread is here.
     """
     def __init__(self, env, policy, num_local_steps, visualise, predictor, envWrap,
-                    noReward):
+                    noReward, env_id, client_id, designHead, noLifeReward, record_frequency, record_dir):
         threading.Thread.__init__(self)
         self.queue = queue.Queue(5)  # ideally, should be 1. Mostly doesn't matter in our case.
         self.num_local_steps = num_local_steps
@@ -125,6 +126,14 @@ class RunnerThread(threading.Thread):
         self.envWrap = envWrap
         self.noReward = noReward
 
+        self.env_id = env_id
+        self.client_id = client_id
+        self.designHead = designHead
+        self.noLifeReward = noLifeReward
+        self.record_frequency = record_frequency
+        self.record_dir = record_dir
+        self.episode_counter = 0 # restart environment every x episodes
+
     def start_runner(self, sess, summary_writer):
         self.sess = sess
         self.summary_writer = summary_writer
@@ -135,7 +144,7 @@ class RunnerThread(threading.Thread):
             self._run()
 
     def _run(self):
-        rollout_provider = env_runner(self.env, self.policy, self.num_local_steps,
+        rollout_provider = self.env_runner(self.env, self.policy, self.num_local_steps,
                                         self.summary_writer, self.visualise, self.predictor,
                                         self.envWrap, self.noReward)
         while True:
@@ -146,100 +155,112 @@ class RunnerThread(threading.Thread):
             self.queue.put(next(rollout_provider), timeout=600.0)
 
 
-def env_runner(env, policy, num_local_steps, summary_writer, render, predictor,
-                envWrap, noReward):
-    """
-    The logic of the thread runner.  In brief, it constantly keeps on running
-    the policy, and as long as the rollout exceeds a certain length, the thread
-    runner appends the policy to the queue.
-    """
-    last_state = env.reset()
-    last_features = policy.get_initial_features()  # reset lstm memory
-    length = 0
-    rewards = 0
-    values = 0
-    if predictor is not None:
-        ep_bonus = 0
-        life_bonus = 0
+    def env_runner(self, env, policy, num_local_steps, summary_writer, render, predictor,
+                    envWrap, noReward):
+        """
+        The logic of the thread runner.  In brief, it constantly keeps on running
+        the policy, and as long as the rollout exceeds a certain length, the thread
+        runner appends the policy to the queue.
+        """
+        last_state = env.reset()
+        last_features = policy.get_initial_features()  # reset lstm memory
+        length = 0
+        rewards = 0
+        values = 0
+        if predictor is not None:
+            ep_bonus = 0
+            life_bonus = 0
 
-    while True:
-        terminal_end = False
-        rollout = PartialRollout(predictor is not None)
+        while True:
+            terminal_end = False
+            rollout = PartialRollout(predictor is not None)
 
-        for _ in range(num_local_steps):
-            # run policy
-            fetched = policy.act(last_state, *last_features)
-            action, value_, features = fetched[0], fetched[1], fetched[2:]
+            for _ in range(num_local_steps):
+                # run policy
+                fetched = policy.act(last_state, *last_features)
+                action, value_, features = fetched[0], fetched[1], fetched[2:]
 
-            # run environment: get action_index from sampled one-hot 'action'
-            stepAct = action.argmax()
-            state, reward, terminal, info = env.step(stepAct)
-            if noReward:
-                reward = 0.
-            if render:
-                env.render(mode='rgb_array')
+                # run environment: get action_index from sampled one-hot 'action'
+                stepAct = action.argmax()
+                state, reward, terminal, info = env.step(stepAct)
+                if noReward:
+                    reward = 0.
+                if render:
+                    env.render(mode='rgb_array')
 
-            curr_tuple = [last_state, action, reward, value_, terminal, last_features]
-            if predictor is not None:
-                bonus = predictor.pred_bonus(last_state, state, action)
-                curr_tuple += [bonus, state]
-                life_bonus += bonus
-                ep_bonus += bonus
-
-            # collect the experience
-            rollout.add(*curr_tuple)
-            rewards += reward
-            length += 1
-            values += value_[0]
-
-            last_state = state
-            last_features = features
-
-            timestep_limit = env.spec.tags.get('wrapper_config.TimeLimit.max_episode_steps')
-            if timestep_limit is None: timestep_limit = env.spec.timestep_limit
-            if terminal or length >= timestep_limit:
-                # prints summary of each life if envWrap==True else each game
+                curr_tuple = [last_state, action, reward, value_, terminal, last_features]
                 if predictor is not None:
-                    print("Episode finished. Sum of shaped rewards: %.2f. Length: %d. Bonus: %.4f." % (rewards, length, life_bonus))
-                    life_bonus = 0
-                else:
-                    print("Episode finished. Sum of shaped rewards: %.2f. Length: %d." % (rewards, length))
-                if 'distance' in info: print('Mario Distance Covered:', info['distance'])
-                length = 0
-                rewards = 0
-                terminal_end = True
-                last_features = policy.get_initial_features()  # reset lstm memory
-                # TODO: don't reset when gym timestep_limit increases, bootstrap -- doesn't matter for atari?
-                # reset only if it hasn't already reseted
-                if length >= timestep_limit or not env.metadata.get('semantics.autoreset'):
-                    last_state = env.reset()
+                    bonus = predictor.pred_bonus(last_state, state, action)
+                    curr_tuple += [bonus, state]
+                    life_bonus += bonus
+                    ep_bonus += bonus
 
-            if info:
-                # summarize full game including all lives (even if envWrap=True)
-                summary = tf.Summary()
-                for k, v in info.items():
-                    summary.value.add(tag=k, simple_value=float(v))
-                if terminal:
-                    summary.value.add(tag='global/episode_value', simple_value=float(values))
-                    values = 0
+                # collect the experience
+                rollout.add(*curr_tuple)
+                rewards += reward
+                length += 1
+                values += value_[0]
+
+                last_state = state
+                last_features = features
+
+                timestep_limit = env.spec.tags.get('wrapper_config.TimeLimit.max_episode_steps')
+                if timestep_limit is None: timestep_limit = env.spec.timestep_limit
+                if terminal or length >= timestep_limit:
+                    # prints summary of each life if envWrap==True else each game
                     if predictor is not None:
-                        summary.value.add(tag='global/episode_bonus', simple_value=float(ep_bonus))
-                        ep_bonus = 0
-                summary_writer.add_summary(summary, policy.global_step.eval())
-                summary_writer.flush()
+                        print("Episode finished. Sum of shaped rewards: %.2f. Length: %d. Bonus: %.4f." % (rewards, length, life_bonus))
+                        life_bonus = 0
+                    else:
+                        print("Episode finished. Sum of shaped rewards: %.2f. Length: %d." % (rewards, length))
+                    if 'distance' in info: print('Mario Distance Covered:', info['distance'])
+                    length = 0
+                    rewards = 0
+                    terminal_end = True
+                    last_features = policy.get_initial_features()  # reset lstm memory
+                    # TODO: don't reset when gym timestep_limit increases, bootstrap -- doesn't matter for atari?
+                    # reset only if it hasn't already reseted
 
-            if terminal_end:
-                break
+                    if self.episode_counter == 9:
+                        print('\nCLOSING ENV')
+                        env.close()
+                        self.env = env = create_env(self.env_id, client_id=self.client_id, remotes=None, envWrap=self.envWrap, designHead=self.designHead,
+                                noLifeReward=self.noLifeReward, record=self.visualise, record_frequency=self.record_frequency, outdir=self.record_dir)
+                        self.episode_counter = 0
+                        print('NEW ENV INITIALIZED\n')
+                    else:
+                        self.episode_counter += 1
 
-        if not terminal_end:
-            rollout.r = policy.value(last_state, *last_features)
+                    if length >= timestep_limit or not env.metadata.get('semantics.autoreset'):
+                        last_state = env.reset()
 
-        # once we have enough experience, yield it, and have the ThreadRunner place it on a queue
-        yield rollout
+                if info:
+                    # summarize full game including all lives (even if envWrap=True)
+                    summary = tf.Summary()
+                    for k, v in info.items():
+                        summary.value.add(tag=k, simple_value=float(v))
+                    if terminal:
+                        summary.value.add(tag='global/episode_value', simple_value=float(values))
+                        values = 0
+                        if predictor is not None:
+                            summary.value.add(tag='global/episode_bonus', simple_value=float(ep_bonus))
+                            ep_bonus = 0
+                    summary_writer.add_summary(summary, policy.global_step.eval())
+                    summary_writer.flush()
+
+                if terminal_end:
+                    break
+
+            if not terminal_end:
+                rollout.r = policy.value(last_state, *last_features)
+
+            # once we have enough experience, yield it, and have the ThreadRunner place it on a queue
+            yield rollout
 
 
 class A3C(object):
-    def __init__(self, env, task, visualise, unsupType, envWrap=False, designHead='universe', noReward=False):
+    def __init__(self, env, task, visualise, unsupType, envWrap=False, designHead='universe', noReward=False, 
+        env_id='SuperMarioBros-1-1-v0', client_id=0, noLifeReward=True, record_frequency=200, record_dir='tmp/model'):
         """
         An implementation of the A3C algorithm that is reasonably well-tuned for the VNC environments.
         Below, we will have a modest amount of complexity due to the way TensorFlow handles data parallelism.
@@ -314,7 +335,7 @@ class A3C(object):
 
 
             self.runner = RunnerThread(env, pi, constants['ROLLOUT_MAXLEN'], visualise,
-                                        predictor, envWrap, noReward)
+                                        predictor, envWrap, noReward, env_id, client_id, designHead, noLifeReward, record_frequency, record_dir)
 
             # storing summaries
             bs = tf.to_float(tf.shape(pi.x)[0])

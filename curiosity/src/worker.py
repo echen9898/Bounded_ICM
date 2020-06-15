@@ -82,6 +82,7 @@ def run(args, server):
                 print("GLOBAL STEP: {}".format(global_step))
                 inference_agent.run_inference(sess, inference_agent.env, summary_writer)
                 inference_agent.env.close()
+                time.sleep(5)
                 print("CLOSED ENVIRONMENT")
                 inference_agent.env = create_env(args.env_id, client_id=str(args.task), remotes=args.remotes, envWrap=args.envWrap, designHead=args.designHead,
                             noLifeReward=args.noLifeReward, record=args.visualise, record_frequency=args.record_frequency, outdir=record_dir)
@@ -107,7 +108,8 @@ def run(args, server):
 
         env = create_env(args.env_id, client_id=str(args.task), remotes=args.remotes, envWrap=args.envWrap, designHead=args.designHead,
                             noLifeReward=args.noLifeReward, record=visualise, record_frequency=args.record_frequency, outdir=record_dir)
-        trainer = A3C(env, args.task, args.visualise, args.unsup, args.envWrap, args.designHead, args.noReward)
+        trainer = A3C(env, args.task, visualise, args.unsup, args.envWrap, args.designHead, args.noReward,
+                        args.env_id, args.task, args.noLifeReward, args.record_frequency, record_dir)
 
         # logging
         if args.task == 0:
