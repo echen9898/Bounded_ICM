@@ -112,6 +112,8 @@ class VizdoomEnv(gym.Env):
                     if 'fix' in DOOM_SETTINGS[self.level][SCENARIO].lower():
                         # mapId = 'map%02d'%np.random.randint(1, 23)
                         mapId = 'map%02d'%np.random.randint(4, 8)
+                        # mapId = 'map05'
+                        # mapId = np.random.choice(['map04', map05', 'map22', 'map15'], 1)[0] # map12 map16
                     else:
                         mapId = 'map%02d'%np.random.randint(1, RANDOMIZE_MAPS+1)
                     print('\t=> Special Config: Randomly Loading Maps. MapID = ' + mapId)

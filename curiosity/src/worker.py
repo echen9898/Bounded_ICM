@@ -81,12 +81,12 @@ def run(args, server):
                 print("\n")
                 print("GLOBAL STEP: {}".format(global_step))
                 inference_agent.run_inference(sess, inference_agent.env, summary_writer)
-                inference_agent.env.close()
-                time.sleep(5)
-                print("CLOSED ENVIRONMENT")
-                inference_agent.env = create_env(args.env_id, client_id=str(args.task), remotes=args.remotes, envWrap=args.envWrap, designHead=args.designHead,
-                            noLifeReward=args.noLifeReward, record=args.visualise, record_frequency=args.record_frequency, outdir=record_dir)
-                print("INIT NEW ENVIRONMENT")
+                # inference_agent.env.close()
+                # time.sleep(5)
+                # print("CLOSED ENVIRONMENT")
+                # inference_agent.env = create_env(args.env_id, client_id=str(args.task), remotes=args.remotes, envWrap=args.envWrap, designHead=args.designHead,
+                #             noLifeReward=args.noLifeReward, record=args.visualise, record_frequency=args.record_frequency, outdir=record_dir)
+                # print("INIT NEW ENVIRONMENT")
                 global_step = sess.run(inference_agent.global_step)
                 print("\n")
 
