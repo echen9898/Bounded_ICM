@@ -221,15 +221,15 @@ class RunnerThread(threading.Thread):
                     # TODO: don't reset when gym timestep_limit increases, bootstrap -- doesn't matter for atari?
                     # reset only if it hasn't already reseted
 
-                    if self.episode_counter == 9:
-                        print('\nCLOSING ENV')
-                        env.close()
-                        self.env = env = create_env(self.env_id, client_id=self.client_id, remotes=None, envWrap=self.envWrap, designHead=self.designHead,
-                                noLifeReward=self.noLifeReward, record=self.visualise, record_frequency=self.record_frequency, outdir=self.record_dir)
-                        self.episode_counter = 0
-                        print('NEW ENV INITIALIZED\n')
-                    else:
-                        self.episode_counter += 1
+                    # if self.episode_counter == 9:
+                    #     print('\nCLOSING ENV')
+                    #     env.close()
+                    #     self.env = env = create_env(self.env_id, client_id=self.client_id, remotes=None, envWrap=self.envWrap, designHead=self.designHead,
+                    #             noLifeReward=self.noLifeReward, record=self.visualise, record_frequency=self.record_frequency, outdir=self.record_dir)
+                    #     self.episode_counter = 0
+                    #     print('NEW ENV INITIALIZED\n')
+                    # else:
+                    #     self.episode_counter += 1
 
                     if length >= timestep_limit or not env.metadata.get('semantics.autoreset'):
                         last_state = env.reset()
