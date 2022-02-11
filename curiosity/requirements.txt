@@ -31,7 +31,7 @@ requests>=2.20.0
 scipy==0.19.1
 six==1.10.0
 tensorflow==0.12.1
-Twisted==17.5.0
+Twisted==22.1.0
 txaio==2.8.0
 ujson==1.35
 universe==0.21.2
